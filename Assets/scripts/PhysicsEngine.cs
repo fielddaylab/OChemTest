@@ -60,6 +60,7 @@ public class PhysicsEngine : MonoBehaviour {
 							if(formalGroupInDic.possibleConnections
 								.Contains(closeFormalGroupInDic)){
 								//Debug.Log("can connect " + currentFormalGroup.name + ", " + closeFormalGroup.name);
+								FormalGroup.ConnectGroups(currentFormalGroup, closeFormalGroup);
 							}
 						}
 					}
