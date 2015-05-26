@@ -22,6 +22,7 @@ public class FormalGroup : MonoBehaviour {
 	void Update () {
 	
 	}
+
 	public static void ConnectGroups(FormalGroup fg0, FormalGroup fg1, int charge = 1){
 		if(fg0.connectedGroups.Contains(fg1)){
 			return;
@@ -31,5 +32,7 @@ public class FormalGroup : MonoBehaviour {
 		//change remaining charges
 		fg0.remainingCharge -= charge;
 		fg1.remainingCharge -= charge;
+
 	}
+
 }
