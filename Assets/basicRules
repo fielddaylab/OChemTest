@@ -1,0 +1,40 @@
+Elements
+	C, H, O
+
+ |
+-C-  each hand be connected to -H (Can become -CH-, -CH2-, -CH3, or CH4), or -CH2-, -CH3
+ |   at most one hand can be connected to -OH
+     at most one hand can be connected to -COOH
+     at most one hand can be connected to -CHO
+     
+
+ H
+ |
+-C=O The only one hand can be connected to -CH3, -CH2-
+     or -COOH, or OH (same as HCOOH)
+
+ O-H
+ | 
+-C=O The only one hand can be connected to -CHO, -CH2-, 
+     H, or -CH3
+
+-CH2- Can form a C chain. eg. CH3-CH2-CH2-COOH
+      Each hand can be connected to -CH3, -CH2-, 
+       |     |
+      -CH-, -C-
+      		 |
+      At most one hand can be connected to -OH, -CHO, -COOH
+
+
+ |
+-CH-  See -CH2-
+
+-CH=  double "bond" can only be connected to any other double bond
+      eg, =CH-, =O
+
+CH2=  same as -CH=
+
+CH≡   triple bond can only be connected to any other triple bond
+      eg. ≡C-, ≡CH
+-C≡   S 
+    
