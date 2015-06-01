@@ -4,6 +4,7 @@ using System.Collections;
 public class PlayerControl : MonoBehaviour {
 	[HideInInspector]public Camera camera;
 	public static PlayerControl self;
+	public static GameObject sphereShield;
 	public static Vector3 center;
 	public float horizontalSpeed = 2.0f;
 	public float verticalSpeed = 2.0f; 
@@ -18,6 +19,9 @@ public class PlayerControl : MonoBehaviour {
 		center = Vector3.zero;
 		camera = GetComponent<Camera>();
 		state = (int)State.Default;
+		sphereShield = GameObject.Find("SphereShield");
+		
+		sphereShield.SetActive(false);
 	}
 	// Use this for initialization
 	void Start () {

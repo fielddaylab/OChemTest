@@ -6,7 +6,8 @@ public class Carbon : Element {
 	//4 single, 1 double + 2 single, or 1 triple + 1 single
 	//if an H nearby, search through the list
 	public static int index;
-	void Awake(){
+	public override void Awake(){
+		base.Awake();
 		index = 0;
 		atomicNumber = 6;
 		maxCharge = 4;

@@ -3,7 +3,8 @@ using System.Collections;
 
 public class Hydrogen : Element {
 	public static int index;
-	void Awake(){
+	public override void Awake(){
+		base.Awake();
 		index = 1;
 		atomicNumber = 1;
 		maxCharge = 1;
