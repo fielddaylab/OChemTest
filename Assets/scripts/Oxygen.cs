@@ -5,6 +5,9 @@ public class Oxygen : Element{
 	public static int index;
 	void Awake(){
 		index = 2;
+		atomicNumber = 8;
+		maxCharge = 2;
+		name = "O";
 	}
 	// Use this for initialization
 	void Start () {

@@ -8,6 +8,9 @@ public class Carbon : Element {
 	public static int index;
 	void Awake(){
 		index = 0;
+		atomicNumber = 6;
+		maxCharge = 4;
+		name = "C";
 	}
 	// Use this for initialization
 	void Start () {

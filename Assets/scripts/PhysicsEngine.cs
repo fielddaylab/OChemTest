@@ -15,11 +15,11 @@ public class PhysicsEngine : MonoBehaviour {
 				formalGroups.Add(fg);
 			}
 		}
-		connectionMap = ConnectionRules.self.allFormalGroups;
+		
 	}
 	// Use this for initialization
 	void Start () {
-	
+		connectionMap = ConnectionRules.self.allFormalGroups;
 	}
 	
 	// Update is called once per frame
