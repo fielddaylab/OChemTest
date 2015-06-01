@@ -8,6 +8,7 @@ public class Hydrogen : Element {
 		index = 1;
 		atomicNumber = 1;
 		maxCharge = 1;
+		shieldScale = 4f;
 		name = "H";
 	}
 	// Use this for initialization

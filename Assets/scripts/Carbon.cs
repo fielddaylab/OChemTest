@@ -11,6 +11,7 @@ public class Carbon : Element {
 		index = 0;
 		atomicNumber = 6;
 		maxCharge = 4;
+		shieldScale = 4f;
 		name = "C";
 	}
 	// Use this for initialization
