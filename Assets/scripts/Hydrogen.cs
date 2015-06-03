@@ -8,8 +8,9 @@ public class Hydrogen : Element {
 		index = 1;
 		atomicNumber = 1;
 		maxCharge = 1;
-		shieldScale = 8f;
+		remainingCharge = maxCharge;
 		name = "H";
+		canBondWithSameType = false;
 	}
 	// Use this for initialization
 	void Start () {

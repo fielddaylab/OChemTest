@@ -11,8 +11,9 @@ public class Carbon : Element {
 		index = 0;
 		atomicNumber = 6;
 		maxCharge = 4;
-		shieldScale = 8f;
+		remainingCharge = maxCharge;
 		name = "C";
+		canBondWithSameType = true;
 	}
 	// Use this for initialization
 	void Start () {

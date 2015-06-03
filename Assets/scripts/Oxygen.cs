@@ -8,8 +8,9 @@ public class Oxygen : Element{
 		index = 2;
 		atomicNumber = 8;
 		maxCharge = 2;
-		shieldScale = 8f;
+		remainingCharge = maxCharge;
 		name = "O";
+		canBondWithSameType = false;
 	}
 	// Use this for initialization
 	void Start () {
