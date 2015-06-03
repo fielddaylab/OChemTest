@@ -21,6 +21,22 @@ public class Element : MonoBehaviour {
 	void Update () {
 	
 	}
+	public void StopMyCoroutines(){
+		StopAllCoroutines();
+	}
+	void OnCollisionEnter(Collision other){
+		//Debug.Log("stop attraction between " + gameObject.name + " and " + other.gameObject.name );
+		StopAllCoroutines();
+		//other.gameObject.GetComponent<Element>().StopMyCoroutines();
+		GetComponent<Rigidbody>().velocity = Vector3.zero;
+		GetComponent<Rigidbody>().AddForce(Vector3.zero);
+		//other.gameObject.GetComponent<Rigidbody>().AddForce(Vector3.zero);
+		//other.gameObject.GetComponent<Rigidbody>().velocity = Vector3.zero;
+	}
+	void OnCollisionStay(){
+		GetComponent<Rigidbody>().velocity = Vector3.zero;
+		GetComponent<Rigidbody>().AddForce(Vector3.zero);
+	}
 	void OnMouseDown(){
 		AttachShield();
 	}
@@ -37,34 +53,16 @@ public class Element : MonoBehaviour {
 			= Physics.OverlapSphere(
 				PlayerControl.sphereShield.transform.position, 
 				shieldRadius);
-		//find nearby atom with the max atomic number
-		Collider atomWithMaxAtomicNumber = null;
-		Collider atomWithMinAtomicNumber = null;
-		int minAtomicNumber = 1000;
-		int maxAtomicNumber = 0;
+
 		foreach(Collider c in closebyAtoms){
 			Element e = c.GetComponent<Element>();
 			if(e.Equals(this)){
 				//exclude self
 				continue;
 			}
-			if(e.atomicNumber > maxAtomicNumber){
-				maxAtomicNumber = e.atomicNumber;
-				atomWithMaxAtomicNumber = c;
-			}
-			if(e.atomicNumber < minAtomicNumber){
-				minAtomicNumber = e.atomicNumber;
-				atomWithMinAtomicNumber = c;
-			}
-		}
-		if(atomWithMaxAtomicNumber != null){
-			Element e = atomWithMaxAtomicNumber.GetComponent<Element>();
 			if(this.atomicNumber <= e.atomicNumber){
 				StartCoroutine(e.Attract(this));
 			}
-		}
-		if(atomWithMinAtomicNumber != null){
-			Element e = atomWithMinAtomicNumber.GetComponent<Element>();
 			if(this.atomicNumber >= e.atomicNumber){
 				StartCoroutine(this.Attract(e));
 			}
@@ -76,30 +74,19 @@ public class Element : MonoBehaviour {
 
 		//d = 1/2 a * t^2
 		float distance = Vector3.Distance(transform.position, other.transform.position);
-		float myRadius = GetComponent<SphereCollider>().radius;
-		float otherRadius = other.GetComponent<SphereCollider>().radius;
-		float radiusSum = myRadius + otherRadius;
 		//Debug.Log(distance + ", " + radiusSum);
 
-		while(distance > radiusSum){
+		while(true){
 			yield return new WaitForSeconds(0.01f);
-			float vCurrent = other.speed + this.accleration * 0.01f;
-			float deltaDistance = (other.speed + vCurrent) * 0.01f / 2f;
-			other.transform.position 
-				= Vector3.MoveTowards(
-					other.transform.position, 
-					this.transform.position, 
-					deltaDistance);
 
-			other.speed = vCurrent;
+			Vector3 forceToOther = (transform.position-other.transform.position).normalized
+				*40f/Mathf.Pow(distance,2f);
 
+			other.GetComponent<Rigidbody>().AddForce(forceToOther);
 			distance = Vector3.Distance(transform.position, other.transform.position);
-			myRadius = GetComponent<SphereCollider>().radius;
-			otherRadius = other.GetComponent<SphereCollider>().radius;
-			radiusSum = myRadius + otherRadius;
-			//Debug.Log(distance + ", " + radiusSum);
 		}
-		other.speed = 0f;
+			
+
 	}
 	void AttachShield(){
 		//attach sphere shield as child

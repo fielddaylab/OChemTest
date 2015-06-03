@@ -8,7 +8,7 @@ public class Oxygen : Element{
 		index = 2;
 		atomicNumber = 8;
 		maxCharge = 2;
-		shieldScale = 4f;
+		shieldScale = 8f;
 		name = "O";
 	}
 	// Use this for initialization
