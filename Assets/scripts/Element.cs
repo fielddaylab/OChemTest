@@ -105,6 +105,8 @@ public class Element : MonoBehaviour {
 		GetComponent<Rigidbody>().AddForce(Vector3.zero);
 	}
 	void OnCollisionExit(Collision other){
+		Element e = other.gameObject.GetComponent<Element>();
+		if(this.GetInstanceID() > e.GetInstanceID())return;
 		TryDisconnect(this, other.gameObject.GetComponent<Element>());
 	}
 	void OnMouseDown(){
