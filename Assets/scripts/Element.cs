@@ -77,18 +77,25 @@ public class Element : MonoBehaviour {
 		//other.gameObject.GetComponent<Element>().StopMyCoroutines();
 		GetComponent<Rigidbody>().velocity = Vector3.zero;
 		GetComponent<Rigidbody>().AddForce(Vector3.zero);
+
 		Element e = other.gameObject.GetComponent<Element>();
+		//avoid repetition
+		if(this.GetInstanceID() > e.GetInstanceID())return;
 		int bondCharge = Mathf.Min(this.remainingCharge, e.remainingCharge);
+		if(bondCharge <= 0){
+			Debug.Log(name + ": " + remainingCharge + ", " + e.name + ": " + e.remainingCharge);
+		}
 
-		if(bondCharge > 0 && e.GetType() != this.GetType()
-			|| e.canBondWithSameType){
+		if(bondCharge > 0 && 
+			(e.GetType() != this.GetType() || e.canBondWithSameType )){
 
-			
+			Debug.Log(this.name + " collides " + other.gameObject.name);
 			this.remainingCharge -= bondCharge;
-			Debug.Log(this.gameObject.name + " charge -" + bondCharge);
+			e.remainingCharge -= bondCharge;
 			BondingNeighbour bondee = new BondingNeighbour(bondCharge, e);
-			
+			BondingNeighbour me = new BondingNeighbour(bondCharge, this);
 			bondedNeighbours.Add(bondee);
+			e.bondedNeighbours.Add(me);
 		}
 		
 				
