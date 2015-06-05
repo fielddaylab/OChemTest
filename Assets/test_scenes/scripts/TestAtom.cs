@@ -33,9 +33,7 @@ public class TestAtom : MonoBehaviour {
 		for(int i=0; i < hAtoms.Length; i++){
 			GameObject g = hAtoms[i];
 			g.transform.position = CHBondLength/sqrt3 * relativePositions[i];
-			//g.transform.position 
-			//	= Quaternion.AngleAxis(Mathf.Acos(-1/3f)*Mathf.Rad2Deg/2f, Vector3.right) * g.transform.position;
-		}
+		}	
 	}
 	
 	// Update is called once per frame
@@ -45,12 +43,7 @@ public class TestAtom : MonoBehaviour {
 			GameObject g = hAtoms[0];
 			Vector3 vFrom = relativePositions[0];
 			Vector3 vTo = (g.transform.position - this.transform.position).normalized;
-			//Vector3 v0 = transform.position + vTo * (-CHBondLength/sqrt3) ;//+ Vector3.up * Mathf.Sin(Mathf.Acos(-1/3f));
-			Vector3 v0 = Vector3.MoveTowards(transform.position, g.transform.position, -CHBondLength/sqrt3);
-			Vector3 v1 = Quaternion.AngleAxis(120f, vTo) * v0;
-			//hAtoms[1].transform.position = v0;
-			//hAtoms[2].transform.position = v1;    
-			
+		
 			float angle = Vector3.Angle(vFrom, vTo);
 			Debug.Log(angle);
 			Vector3 rotDir = Vector3.Cross(vFrom, vTo);

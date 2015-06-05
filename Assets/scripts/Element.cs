@@ -12,6 +12,20 @@ public class Element : MonoBehaviour {
 	public float accleration;
 	public bool canBondWithSameType;
 
+	public static float sqrt2 = Mathf.Sqrt(2);
+	public static float sqrt3 = Mathf.Sqrt(3);
+	public float CHBondLength;
+	public float CCBondLength;
+	public static BondingPositionInfo[] relativePositions;
+
+	public struct BondingPositionInfo{
+		public Vector3 position;
+		public bool taken;
+		public BondingPositionInfo(Vector3 pos, bool taken = false){
+			this.position = pos;
+			this.taken = taken;
+		}
+	}
 	public struct BondingNeighbour{
 		public int bond;
 		public Element neighbour;
@@ -28,6 +42,18 @@ public class Element : MonoBehaviour {
 		shieldScale = 4f;
 		bondedNeighbours = new List<BondingNeighbour>();
 		canBondWithSameType = true;
+		CHBondLength = 4f;
+		//set up bonding
+		relativePositions = new BondingPositionInfo[4];
+		//for center to vertex distance = 1
+		Vector3 pos0 = new Vector3(sqrt2/sqrt3, 0, -1/sqrt3); 
+		Vector3 pos1 = new Vector3(-sqrt2/sqrt3,0, -1/sqrt3);
+		Vector3 pos2 = new Vector3(0, sqrt2/sqrt3,  1/sqrt3);
+		Vector3 pos3 = new Vector3(0,-sqrt2/sqrt3,  1/sqrt3);
+		relativePositions[0] = new BondingPositionInfo(pos0);
+		relativePositions[1] = new BondingPositionInfo(pos1);
+		relativePositions[2] = new BondingPositionInfo(pos2);
+		relativePositions[3] = new BondingPositionInfo(pos3);
 	}
 	// Use this for initialization
 	void Start () {
@@ -81,6 +107,7 @@ public class Element : MonoBehaviour {
 		Element e = other.gameObject.GetComponent<Element>();
 		//avoid repetition
 		if(this.GetInstanceID() > e.GetInstanceID())return;
+
 		int bondCharge = Mathf.Min(this.remainingCharge, e.remainingCharge);
 		if(bondCharge <= 0){
 			Debug.Log(name + ": " + remainingCharge + ", " + e.name + ": " + e.remainingCharge);
@@ -89,7 +116,7 @@ public class Element : MonoBehaviour {
 		if(bondCharge > 0 && 
 			(e.GetType() != this.GetType() || e.canBondWithSameType )){
 
-			Debug.Log(this.name + " collides " + other.gameObject.name);
+			//Debug.Log(this.name + " collides " + other.gameObject.name);
 			this.remainingCharge -= bondCharge;
 			e.remainingCharge -= bondCharge;
 			BondingNeighbour bondee = new BondingNeighbour(bondCharge, e);
@@ -133,17 +160,47 @@ public class Element : MonoBehaviour {
 				continue;
 			}
 			if(this.remainingCharge > 0 && e.remainingCharge > 0){
-
+				/*
 				if(this.atomicNumber <= e.atomicNumber){
 					StartCoroutine(e.Attract(this));
 				}
 				if(this.atomicNumber >= e.atomicNumber){
 					StartCoroutine(this.Attract(e));
 				}
+				*/
+				if(this.GetType() == typeof(Carbon)){
+					//if(this.remainingCharge == this.maxCharge){
+						//snap e to my first bonding location
+						SnapToBondingLocation(e,bondedNeighbours.Count);
+					//}
+				}
+				else if(this.GetType() == typeof(Hydrogen)){
+					if(e.GetType() == typeof(Carbon)){
+						e.SnapToBondingLocation(this, e.bondedNeighbours.Count);
+					}
+					else if(e.GetType() == typeof(Hydrogen)){
+						//do nothing or repel
+					}
+				}
 			}
 			
 		}
 		DetachShield();
+	}
+	void SnapToBondingLocation(Element e, int index = 0){
+		//search for a bonding position that's not taken 
+		for(int i=0; i < relativePositions.Length; i++){
+			if(!relativePositions[i].taken){
+				e.transform.position 
+					= transform.position 
+					+ (CHBondLength/sqrt3 * relativePositions[i].position);
+				Debug.Log(relativePositions[i].position);
+				relativePositions[i].taken = true;
+				Debug.Log(e.gameObject.name + " taking position " + i);
+				break;
+			}
+		}
+		
 	}
 	IEnumerator Attract(Element other){
 		//v = at + v0
