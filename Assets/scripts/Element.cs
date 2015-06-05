@@ -17,6 +17,7 @@ public class Element : MonoBehaviour {
 	public float CHBondLength;
 	public float CCBondLength;
 	public BondingPositionInfo[] relativePositions;
+	public GameObject bondPrefab;
 
 	public struct BondingPositionInfo{
 		public Vector3 position;
@@ -54,6 +55,8 @@ public class Element : MonoBehaviour {
 		relativePositions[1] = new BondingPositionInfo(pos1);
 		relativePositions[2] = new BondingPositionInfo(pos2);
 		relativePositions[3] = new BondingPositionInfo(pos3);
+
+
 	}
 	// Use this for initialization
 	void Start () {
@@ -174,20 +177,37 @@ public class Element : MonoBehaviour {
 					//if(this.remainingCharge == this.maxCharge){
 						//snap e to my first bonding location
 						SnapToBondingLocation(e,bondedNeighbours.Count);
+						CreateBondWith(e);
 					//}
 				}
 				else if(this.GetType() == typeof(Hydrogen)){
 					if(e.GetType() == typeof(Carbon)){
 						e.SnapToBondingLocation(this, e.bondedNeighbours.Count);
+						e.CreateBondWith(this);
 					}
 					else if(e.GetType() == typeof(Hydrogen)){
-						//do nothing or repel
+						//do nothing (or repel?)
 					}
 				}
 			}
 			
 		}
 		DetachShield();
+	}
+	void CreateBondWith(Element e){
+		Vector3 bondDirection = e.transform.position - this.transform.position;
+		Vector3 bondCenter = 0.5f*(e.transform.position + this.transform.position);
+		GameObject newBond = Instantiate(bondPrefab, bondCenter, Quaternion.identity) 
+							as GameObject;
+							
+		newBond.transform.up = bondDirection;
+
+		
+		Vector3 defaultScale = newBond.transform.localScale;
+		newBond.transform.localScale 
+			= new Vector3(defaultScale.x, bondDirection.magnitude-1f, defaultScale.z);
+
+
 	}
 	void DetachNeighbours(){
 		
@@ -205,7 +225,7 @@ public class Element : MonoBehaviour {
 				e.transform.position 
 					= this.transform.position 
 					+ (CHBondLength/sqrt3 * this.relativePositions[i].position);
-				Debug.Log(this.relativePositions[i].position);
+		
 				this.relativePositions[i].taken = true;
 				Debug.Log(e.gameObject.name + " taking position of " + this.gameObject.name + ", " + i);
 				break;
