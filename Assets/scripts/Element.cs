@@ -16,7 +16,7 @@ public class Element : MonoBehaviour {
 	public static float sqrt3 = Mathf.Sqrt(3);
 	public float CHBondLength;
 	public float CCBondLength;
-	public static BondingPositionInfo[] relativePositions;
+	public BondingPositionInfo[] relativePositions;
 
 	public struct BondingPositionInfo{
 		public Vector3 position;
@@ -138,10 +138,12 @@ public class Element : MonoBehaviour {
 	}
 	void OnMouseDown(){
 		AttachShield();
+		DetachNeighbours();
 	}
 	void OnMouseDrag(){
 		PlayerControl.self.state = (int)PlayerControl.State.HoldingAtom;
 		MoveWithMouse();
+
 	}
 	void OnMouseUp(){
 		//check atoms within sphere
@@ -187,16 +189,25 @@ public class Element : MonoBehaviour {
 		}
 		DetachShield();
 	}
+	void DetachNeighbours(){
+		
+		Debug.Log(gameObject.name + " detaching neighbours");
+		for(int i=0; i < relativePositions.Length; i++){
+			relativePositions[i].taken = false;
+		}
+
+	}
+	//e: element to be snapped
 	void SnapToBondingLocation(Element e, int index = 0){
 		//search for a bonding position that's not taken 
-		for(int i=0; i < relativePositions.Length; i++){
-			if(!relativePositions[i].taken){
+		for(int i=0; i < this.relativePositions.Length; i++){
+			if(!this.relativePositions[i].taken){
 				e.transform.position 
-					= transform.position 
-					+ (CHBondLength/sqrt3 * relativePositions[i].position);
-				Debug.Log(relativePositions[i].position);
-				relativePositions[i].taken = true;
-				Debug.Log(e.gameObject.name + " taking position " + i);
+					= this.transform.position 
+					+ (CHBondLength/sqrt3 * this.relativePositions[i].position);
+				Debug.Log(this.relativePositions[i].position);
+				this.relativePositions[i].taken = true;
+				Debug.Log(e.gameObject.name + " taking position of " + this.gameObject.name + ", " + i);
 				break;
 			}
 		}
