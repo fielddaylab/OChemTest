@@ -40,6 +40,19 @@ public class Element : MonoBehaviour {
 	}
 	public List<BondingNeighbour> bondedNeighbours;
 
+	//find the bondee in e that is the closest to this
+	public Element ClosestNeighbourOf(Element e){
+		Element element2Debond = null;
+		float minDist = 100f;
+		foreach(BondingNeighbour bn in e.bondedNeighbours){
+			float d = Vector3.Distance(bn.neighbour.transform.position, this.transform.position);
+			if(d < minDist){
+				minDist = d;
+				element2Debond = bn.neighbour;
+			}
+		}
+		return element2Debond;
+	}
 	//find an element in the neighbours list, and remove it
 	public void RemoveBondingNeighbour(Element e, bool destroyBond = true){
 		GameObject bondToDestroy = null;
@@ -48,8 +61,11 @@ public class Element : MonoBehaviour {
 				if(destroyBond){
 					bondToDestroy = bondedNeighbours[i].bond;
 					//bondedNeighbours[i].bond = null;
-					Debug.Log(bondToDestroy.name);
-					Destroy(bondToDestroy);
+					if(bondToDestroy != null){
+						Debug.Log(bondToDestroy.name);
+						Destroy(bondToDestroy);
+					}
+					
 				}
 				bondedNeighbours.RemoveAt(i);
 				return;
@@ -127,27 +143,7 @@ public class Element : MonoBehaviour {
 		//other.gameObject.GetComponent<Element>().StopMyCoroutines();
 		GetComponent<Rigidbody>().velocity = Vector3.zero;
 		GetComponent<Rigidbody>().AddForce(Vector3.zero);
-
-		Element e = other.gameObject.GetComponent<Element>();
-		//avoid repetition
-		if(this.GetInstanceID() > e.GetInstanceID())return;
-
-		int bondCharge = Mathf.Min(this.remainingCharge, e.remainingCharge);
-		if(bondCharge <= 0){
-			Debug.Log(name + ": " + remainingCharge + ", " + e.name + ": " + e.remainingCharge);
-		}
-
-		if(bondCharge > 0 && 
-			(e.GetType() != this.GetType() || e.canBondWithSameType )){
-
-			//Debug.Log(this.name + " collides " + other.gameObject.name);
-			this.remainingCharge -= bondCharge;
-			e.remainingCharge -= bondCharge;
-			BondingNeighbour bondee = new BondingNeighbour(bondCharge, e);
-			BondingNeighbour me = new BondingNeighbour(bondCharge, this);
-			bondedNeighbours.Add(bondee);
-			e.bondedNeighbours.Add(me);
-		}
+		other.gameObject.GetComponent<Element>().DetachNeighbours();
 		
 				
 	}
@@ -156,9 +152,11 @@ public class Element : MonoBehaviour {
 		GetComponent<Rigidbody>().AddForce(Vector3.zero);
 	}
 	void OnCollisionExit(Collision other){
+		
 		Element e = other.gameObject.GetComponent<Element>();
 		if(this.GetInstanceID() > e.GetInstanceID())return;
 		TryDisconnect(this, other.gameObject.GetComponent<Element>());
+
 	}
 	void OnMouseDown(){
 		AttachShield();
@@ -185,7 +183,7 @@ public class Element : MonoBehaviour {
 				//exclude self
 				continue;
 			}
-			if(this.remainingCharge > 0 && e.remainingCharge > 0){
+			if(this.remainingCharge > 0 ){
 				/*
 				if(this.atomicNumber <= e.atomicNumber){
 					StartCoroutine(e.Attract(this));
@@ -196,9 +194,26 @@ public class Element : MonoBehaviour {
 				*/
 				if(this.GetType() == typeof(Carbon)){
 					//if(this.remainingCharge == this.maxCharge){
+						//before snapping, disconnect all bonds
+						e.DetachNeighbours();
+						//TODO: instead of disconnecting all bonds,snap group
 						//snap e to my first bonding location
 						SnapToBondingLocation(e,bondedNeighbours.Count);
+						//if e has already bonded with other atoms
+
 						GameObject bond = CreateBondWith(e);
+						this.remainingCharge -= 1;
+						if(e.remainingCharge == 0){
+							//break an existing bond of e's
+							//Find the closest neighbour to e and break it
+							Element element2Debond = this.ClosestNeighbourOf(e);
+
+							if(element2Debond != null){
+								e.RemoveBondingNeighbour(element2Debond, true);
+								e.remainingCharge += 1;
+							}
+						}
+						e.remainingCharge -= 1;
 						//add each other to neighbours list with bond
 						this.bondedNeighbours.Add(new BondingNeighbour(1, e, bond));
 						e.bondedNeighbours.Add(new BondingNeighbour(1,this, bond));
@@ -212,6 +227,7 @@ public class Element : MonoBehaviour {
 					//H bonds with C
 					if(e.GetType() == typeof(Carbon)){
 						e.SnapToBondingLocation(this, e.bondedNeighbours.Count);
+
 						GameObject bond = e.CreateBondWith(this);
 
 						this.bondedNeighbours.Add(new BondingNeighbour(1, e, bond));
@@ -251,6 +267,8 @@ public class Element : MonoBehaviour {
 			//remove this from neighbour elements' neighbour list
 			//and destroy the bond object
 			neighbourElement.RemoveBondingNeighbour(this, true);
+			neighbourElement.remainingCharge += 1;
+			this.remainingCharge += 1;
 		}
 		//clear my neighbour list
 		bondedNeighbours.Clear();
@@ -307,5 +325,7 @@ public class Element : MonoBehaviour {
 		mouseInWorld.z = 10f;
 		Vector3 newAtomPosition = Camera.main.ScreenToWorldPoint(mouseInWorld);
 		transform.position = newAtomPosition;
+		
+		
 	}
 }
