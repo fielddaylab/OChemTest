@@ -28,20 +28,41 @@ public class Element : MonoBehaviour {
 		}
 	}
 	public struct BondingNeighbour{
-		public int bond;
+		public int bondCharge;
 		public Element neighbour;
-		public BondingNeighbour(int b, Element e){
-			this.bond = b;
+		public GameObject bond;
+
+		public BondingNeighbour(int b, Element e, GameObject bond=null){
+			this.bondCharge = b;
 			this.neighbour = e;
+			this.bond = bond;
 		}
 	}
 	public List<BondingNeighbour> bondedNeighbours;
 
+	//find an element in the neighbours list, and remove it
+	public void RemoveBondingNeighbour(Element e, bool destroyBond = true){
+		GameObject bondToDestroy = null;
+		for(int i=0; i < bondedNeighbours.Count;i++){
+			if(bondedNeighbours[i].neighbour == e){
+				if(destroyBond){
+					bondToDestroy = bondedNeighbours[i].bond;
+					//bondedNeighbours[i].bond = null;
+					Debug.Log(bondToDestroy.name);
+					Destroy(bondToDestroy);
+				}
+				bondedNeighbours.RemoveAt(i);
+				return;
+			}
+		}
+
+	}
 	public virtual void Awake(){
 		speed = 0f;
 		accleration = 1f;
 		shieldScale = 4f;
 		bondedNeighbours = new List<BondingNeighbour>();
+		
 		canBondWithSameType = true;
 		CHBondLength = 4f;
 		//set up bonding
@@ -86,7 +107,7 @@ public class Element : MonoBehaviour {
 			BondingNeighbour bn = e2.bondedNeighbours[i];
 			if(bn.neighbour == e1){
 				e2.bondedNeighbours.RemoveAt(i);
-				bond = bn.bond;
+				bond = bn.bondCharge;
 				bothRemoved = true;
 				break;
 			}
@@ -177,13 +198,24 @@ public class Element : MonoBehaviour {
 					//if(this.remainingCharge == this.maxCharge){
 						//snap e to my first bonding location
 						SnapToBondingLocation(e,bondedNeighbours.Count);
-						CreateBondWith(e);
+						GameObject bond = CreateBondWith(e);
+						//add each other to neighbours list with bond
+						this.bondedNeighbours.Add(new BondingNeighbour(1, e, bond));
+						e.bondedNeighbours.Add(new BondingNeighbour(1,this, bond));
+
+						if(e.GetType() != typeof(Oxygen)){
+							//TODO?
+						}
 					//}
 				}
 				else if(this.GetType() == typeof(Hydrogen)){
+					//H bonds with C
 					if(e.GetType() == typeof(Carbon)){
 						e.SnapToBondingLocation(this, e.bondedNeighbours.Count);
-						e.CreateBondWith(this);
+						GameObject bond = e.CreateBondWith(this);
+
+						this.bondedNeighbours.Add(new BondingNeighbour(1, e, bond));
+						e.bondedNeighbours.Add(new BondingNeighbour(1,this, bond));
 					}
 					else if(e.GetType() == typeof(Hydrogen)){
 						//do nothing (or repel?)
@@ -194,20 +226,19 @@ public class Element : MonoBehaviour {
 		}
 		DetachShield();
 	}
-	void CreateBondWith(Element e){
+	GameObject CreateBondWith(Element e){
 		Vector3 bondDirection = e.transform.position - this.transform.position;
 		Vector3 bondCenter = 0.5f*(e.transform.position + this.transform.position);
 		GameObject newBond = Instantiate(bondPrefab, bondCenter, Quaternion.identity) 
 							as GameObject;
-							
+
 		newBond.transform.up = bondDirection;
 
 		
 		Vector3 defaultScale = newBond.transform.localScale;
 		newBond.transform.localScale 
 			= new Vector3(defaultScale.x, bondDirection.magnitude-1f, defaultScale.z);
-
-
+		return newBond;
 	}
 	void DetachNeighbours(){
 		
@@ -215,7 +246,14 @@ public class Element : MonoBehaviour {
 		for(int i=0; i < relativePositions.Length; i++){
 			relativePositions[i].taken = false;
 		}
-
+		for(int i=0; i < this.bondedNeighbours.Count; i++){
+			Element neighbourElement = bondedNeighbours[i].neighbour;
+			//remove this from neighbour elements' neighbour list
+			//and destroy the bond object
+			neighbourElement.RemoveBondingNeighbour(this, true);
+		}
+		//clear my neighbour list
+		bondedNeighbours.Clear();
 	}
 	//e: element to be snapped
 	void SnapToBondingLocation(Element e, int index = 0){
