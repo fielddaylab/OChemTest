@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 public class Element : MonoBehaviour {
+
 	public string name;
 	public int maxCharge;
 	public int remainingCharge;
@@ -22,20 +23,26 @@ public class Element : MonoBehaviour {
 	public struct BondingPositionInfo{
 		public Vector3 position;
 		public bool taken;
+
 		public BondingPositionInfo(Vector3 pos, bool taken = false){
 			this.position = pos;
 			this.taken = taken;
 		}
+
 	}
 	public struct BondingNeighbour{
 		public int bondCharge;
 		public Element neighbour;
 		public GameObject bond;
+		//neighbours bondingpositioninfo index
+		public int bpiIndex;
 
-		public BondingNeighbour(int b, Element e, GameObject bond=null){
+		public BondingNeighbour(int b, Element e, Element self, GameObject bond, int bpiIndex){
 			this.bondCharge = b;
 			this.neighbour = e;
 			this.bond = bond;
+			this.bpiIndex = bpiIndex;
+			
 		}
 	}
 	public List<BondingNeighbour> bondedNeighbours;
@@ -53,6 +60,16 @@ public class Element : MonoBehaviour {
 		}
 		return element2Debond;
 	}
+	public void TryBreakClosestNeghbour(Element e){
+		Element element2Debond = this.ClosestNeighbourOf(e);
+
+		if(element2Debond != null){
+			e.RemoveBondingNeighbour(element2Debond, true);
+			element2Debond.RemoveBondingNeighbour(e, true);
+			e.remainingCharge += 1;
+			element2Debond.remainingCharge += 1;
+		}
+	}
 	//find an element in the neighbours list, and remove it
 	public void RemoveBondingNeighbour(Element e, bool destroyBond = true){
 		GameObject bondToDestroy = null;
@@ -62,15 +79,21 @@ public class Element : MonoBehaviour {
 					bondToDestroy = bondedNeighbours[i].bond;
 					//bondedNeighbours[i].bond = null;
 					if(bondToDestroy != null){
-						Debug.Log(bondToDestroy.name);
 						Destroy(bondToDestroy);
 					}
 					
 				}
+
 				bondedNeighbours.RemoveAt(i);
+
 				return;
 			}
 		}
+
+	}
+	//TODO
+	//snaps the group eInGroup is in to connect with destinationElement
+	public void SnapGroup(Element eInGroup, Element destinationElement){
 
 	}
 	public virtual void Awake(){
@@ -168,6 +191,7 @@ public class Element : MonoBehaviour {
 
 	}
 	void OnMouseUp(){
+
 		//check atoms within sphere
 		float shieldRadius 
 			= PlayerControl.sphereShield.GetComponent<MeshRenderer>().bounds.extents.x;
@@ -192,13 +216,16 @@ public class Element : MonoBehaviour {
 					StartCoroutine(this.Attract(e));
 				}
 				*/
+				Debug.Log("remainingCharge > 0");
 				if(this.GetType() == typeof(Carbon)){
+					Debug.Log("I am carbon");
 					//if(this.remainingCharge == this.maxCharge){
 						//before snapping, disconnect all bonds
 						e.DetachNeighbours();
-						//TODO: instead of disconnecting all bonds,snap group
+						//TODO: instead of disconnecting all bonds,snap group?
 						//snap e to my first bonding location
-						SnapToBondingLocation(e,bondedNeighbours.Count);
+						int bpiIndex = SnapToBondingLocation(e,bondedNeighbours.Count);
+						//SnapNeiboursToNewParentLocation(e);
 						//if e has already bonded with other atoms
 
 						GameObject bond = CreateBondWith(e);
@@ -206,17 +233,13 @@ public class Element : MonoBehaviour {
 						if(e.remainingCharge == 0){
 							//break an existing bond of e's
 							//Find the closest neighbour to e and break it
-							Element element2Debond = this.ClosestNeighbourOf(e);
-
-							if(element2Debond != null){
-								e.RemoveBondingNeighbour(element2Debond, true);
-								e.remainingCharge += 1;
-							}
+							TryBreakClosestNeghbour(e);
 						}
 						e.remainingCharge -= 1;
 						//add each other to neighbours list with bond
-						this.bondedNeighbours.Add(new BondingNeighbour(1, e, bond));
-						e.bondedNeighbours.Add(new BondingNeighbour(1,this, bond));
+						this.bondedNeighbours.Add(new BondingNeighbour(1, e, this,bond, 0));
+
+						e.bondedNeighbours.Add(new BondingNeighbour(1,this,e, bond, bpiIndex));
 
 						if(e.GetType() != typeof(Oxygen)){
 							//TODO?
@@ -225,17 +248,30 @@ public class Element : MonoBehaviour {
 				}
 				else if(this.GetType() == typeof(Hydrogen)){
 					//H bonds with C
-					if(e.GetType() == typeof(Carbon)){
-						e.SnapToBondingLocation(this, e.bondedNeighbours.Count);
-
-						GameObject bond = e.CreateBondWith(this);
-
-						this.bondedNeighbours.Add(new BondingNeighbour(1, e, bond));
-						e.bondedNeighbours.Add(new BondingNeighbour(1,this, bond));
+					Debug.Log("I am Hydrogen");
+					if(this.remainingCharge == 0){
+						
+						e.TryBreakClosestNeghbour(this);
 					}
-					else if(e.GetType() == typeof(Hydrogen)){
-						//do nothing (or repel?)
+					if(this.remainingCharge > 0){
+
+						if(e.GetType() == typeof(Carbon)){
+							Debug.Log("that is carbon");
+							this.DetachNeighbours();
+							int bpiIndex = e.SnapToBondingLocation(this, e.bondedNeighbours.Count);
+
+							GameObject bond = e.CreateBondWith(this);
+
+							this.bondedNeighbours.Add(new BondingNeighbour(1, e, this, bond, bpiIndex));
+							e.bondedNeighbours.Add(new BondingNeighbour(1,this, e,bond, 0));
+							e.remainingCharge -=1;
+							this.remainingCharge -=1;
+						}
+						else if(e.GetType() == typeof(Hydrogen)){
+							//do nothing (or repel?)
+						}
 					}
+					
 				}
 			}
 			
@@ -264,6 +300,13 @@ public class Element : MonoBehaviour {
 		}
 		for(int i=0; i < this.bondedNeighbours.Count; i++){
 			Element neighbourElement = bondedNeighbours[i].neighbour;
+			BondingNeighbour bn = bondedNeighbours[i];
+			if(bn.bpiIndex >= 0){
+				
+				neighbourElement.relativePositions[bn.bpiIndex].taken = false;
+				bn.bpiIndex = -1;
+			}
+			
 			//remove this from neighbour elements' neighbour list
 			//and destroy the bond object
 			neighbourElement.RemoveBondingNeighbour(this, true);
@@ -273,8 +316,51 @@ public class Element : MonoBehaviour {
 		//clear my neighbour list
 		bondedNeighbours.Clear();
 	}
-	//e: element to be snapped
-	void SnapToBondingLocation(Element e, int index = 0){
+	
+	//e: element to be snapped to connect with this
+	int SnapToBondingLocation(Element e, int index = 0){
+		//check if I am a carbon, check my neighbours and determine 
+		//my orientation and connect e
+		float angle = 0f;
+		Vector3 vFrom = Vector3.zero, vTo = Vector3.zero;
+		Vector3 rotDir = Vector3.zero;
+		Debug.Log(bondedNeighbours.Count);
+		if(this.GetType() == typeof(Carbon)){
+			//search for an empty bonding location
+			BondingPositionInfo bpi = new BondingPositionInfo(Vector3.zero, false);
+			bool hasUntakenPosition = false;
+			int positionToBeTaken = -1;
+			for(int i =0; i < relativePositions.Length; i++){
+				if(!relativePositions[i].taken){
+					bpi = relativePositions[i];
+					positionToBeTaken = i;
+					hasUntakenPosition = true;
+					break;
+				}
+			}
+			if(!hasUntakenPosition){
+				Debug.Log("All positions taken!");
+				return -1;
+			}
+			
+			if(bondedNeighbours.Count > 0 
+				&& bondedNeighbours.Count < relativePositions.Length){
+				//find the taken position
+				vFrom = relativePositions[0].position;
+				vTo = bondedNeighbours[0].neighbour.transform.position;
+				if((vTo-vFrom) == Vector3.zero){
+					Debug.Log("vfrom vto in same dir");
+				}
+				angle = Vector3.Angle(vFrom, vTo);
+				rotDir = Vector3.Cross(vFrom, vTo);
+				e.transform.position = Quaternion.AngleAxis(angle, rotDir)
+					* (CHBondLength/sqrt3 * bpi.position) 
+					+ this.transform.position;
+				relativePositions[positionToBeTaken].taken = true;
+				return positionToBeTaken;
+			}
+		}
+
 		//search for a bonding position that's not taken 
 		for(int i=0; i < this.relativePositions.Length; i++){
 			if(!this.relativePositions[i].taken){
@@ -283,31 +369,14 @@ public class Element : MonoBehaviour {
 					+ (CHBondLength/sqrt3 * this.relativePositions[i].position);
 		
 				this.relativePositions[i].taken = true;
-				Debug.Log(e.gameObject.name + " taking position of " + this.gameObject.name + ", " + i);
-				break;
+				Debug.Log(bondedNeighbours.Count + " " +  e.gameObject.name + " taking position of " + this.gameObject.name + ", " + i);
+				return i;
 			}
 		}
+		return -1;
 		
 	}
-	IEnumerator Attract(Element other){
-		//v = at + v0
 
-		//d = 1/2 a * t^2
-		float distance = Vector3.Distance(transform.position, other.transform.position);
-		//Debug.Log(distance + ", " + radiusSum);
-
-		while(true){
-			yield return new WaitForSeconds(0.01f);
-
-			Vector3 forceToOther = (transform.position-other.transform.position).normalized
-				*40f/Mathf.Pow(distance,2f);
-
-			other.GetComponent<Rigidbody>().AddForce(forceToOther);
-			distance = Vector3.Distance(transform.position, other.transform.position);
-		}
-			
-
-	}
 	void AttachShield(){
 		//attach sphere shield as child
 		PlayerControl.sphereShield.transform.parent = this.transform;
