@@ -21,6 +21,12 @@ public class Element : MonoBehaviour {
 	public GameObject bondPrefab;
 	public Quaternion rot;
 
+	public int visitState;
+	public enum VisitState{
+		unvisited,
+		visited,
+		visiting
+	};
 	public class BondingPositionInfo{
 		public Vector3 position;
 		public bool taken;
@@ -102,7 +108,8 @@ public class Element : MonoBehaviour {
 		accleration = 1f;
 		shieldScale = 4f;
 		bondedNeighbours = new List<BondingNeighbour>();
-		
+		visitState = (int)VisitState.unvisited;
+
 		canBondWithSameType = true;
 		CHBondLength = 3f;
 		rot = Quaternion.identity;
@@ -213,10 +220,16 @@ public class Element : MonoBehaviour {
 
 		foreach(Collider c in closebyAtoms){
 			Element e = c.GetComponent<Element>();
+
+			
 			if(e.Equals(this)){
 				//exclude self
 				continue;
 			}
+			if(e.GetType() == typeof(Carbon)){
+				Debug.Log(e.gameObject.name + " chain mass: " + e.CalculateChainMass());
+			}
+			
 			if(this.remainingCharge > 0 ){
 				
 				Debug.Log("remainingCharge > 0");
@@ -327,7 +340,37 @@ public class Element : MonoBehaviour {
 		//clear my neighbour list
 		bondedNeighbours.Clear();
 	}
-	
+	//ues BFS to calcualte total mass of the chain
+	int CalculateChainMass(){
+		int totalMass = 0;
+		Queue<Element> queue = new Queue<Element>();
+		//used as a copy of the queue to clear the states
+		Queue<Element> visitedPath = new Queue<Element>();
+
+		queue.Enqueue(this);
+		visitedPath.Enqueue(this);
+
+		this.visitState = (int)VisitState.visiting;
+		while(queue.Count > 0){
+			//dequeue
+			Element currElement = queue.Dequeue();
+			totalMass += currElement.atomicNumber;
+
+			foreach(BondingNeighbour bondingNeighbour in currElement.bondedNeighbours){
+				Element neighbour = bondingNeighbour.neighbour;
+				if(neighbour.visitState == (int)VisitState.unvisited){
+					queue.Enqueue(neighbour);
+					visitedPath.Enqueue(neighbour);
+				}
+			}
+			currElement.visitState = (int)VisitState.visited;
+		}
+		//reset states to unvisited
+		while(visitedPath.Count > 0){
+			visitedPath.Dequeue().visitState = (int)VisitState.unvisited;
+		}
+		return totalMass;
+	}
 	//e: element to be snapped to connect with this
 	int SnapToBondingLocation(Element e, int index = 0){
 		//check if I am a carbon, check my neighbours and determine 
@@ -366,13 +409,7 @@ public class Element : MonoBehaviour {
 				e.transform.position = this.rot //Quaternion.AngleAxis(angle, rotDir)
 					* (CHBondLength/sqrt3 * bpi.position) 
 					+ this.transform.position;
-				/*
-				if(bondedNeighbours.Count == 3){
-					Vector3 rot = Vector3.Cross(bondedNeighbours[0].neighbour.transform.position-transform.position,
-												bondedNeighbours[1].neighbour.transform.position-transform.position);
-					e.transform.position = -rot.normalized * CHBondLength/sqrt3 + this.transform.position;
-				}
-				*/
+				
 				relativePositions[positionToBeTaken].taken = true;
 
 				return positionToBeTaken;
