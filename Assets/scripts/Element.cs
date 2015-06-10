@@ -20,7 +20,7 @@ public class Element : MonoBehaviour {
 	public BondingPositionInfo[] relativePositions;
 	public GameObject bondPrefab;
 
-	public struct BondingPositionInfo{
+	public class BondingPositionInfo{
 		public Vector3 position;
 		public bool taken;
 
@@ -30,7 +30,7 @@ public class Element : MonoBehaviour {
 		}
 
 	}
-	public struct BondingNeighbour{
+	public class BondingNeighbour{
 		public int bondCharge;
 		public Element neighbour;
 		public GameObject bond;
@@ -218,7 +218,6 @@ public class Element : MonoBehaviour {
 				*/
 				Debug.Log("remainingCharge > 0");
 				if(this.GetType() == typeof(Carbon)){
-					Debug.Log("I am carbon");
 					//if(this.remainingCharge == this.maxCharge){
 						//before snapping, disconnect all bonds
 						e.DetachNeighbours();
@@ -248,7 +247,6 @@ public class Element : MonoBehaviour {
 				}
 				else if(this.GetType() == typeof(Hydrogen)){
 					//H bonds with C
-					Debug.Log("I am Hydrogen");
 					if(this.remainingCharge == 0){
 						
 						e.TryBreakClosestNeghbour(this);
