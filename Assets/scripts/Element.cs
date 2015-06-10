@@ -19,6 +19,7 @@ public class Element : MonoBehaviour {
 	public float CCBondLength;
 	public BondingPositionInfo[] relativePositions;
 	public GameObject bondPrefab;
+	public Quaternion rot;
 
 	public class BondingPositionInfo{
 		public Vector3 position;
@@ -103,14 +104,23 @@ public class Element : MonoBehaviour {
 		bondedNeighbours = new List<BondingNeighbour>();
 		
 		canBondWithSameType = true;
-		CHBondLength = 4f;
+		CHBondLength = 3f;
+		rot = Quaternion.identity;
 		//set up bonding
 		relativePositions = new BondingPositionInfo[4];
 		//for center to vertex distance = 1
+		/*
 		Vector3 pos0 = new Vector3(sqrt2/sqrt3, 0, -1/sqrt3); 
 		Vector3 pos1 = new Vector3(-sqrt2/sqrt3,0, -1/sqrt3);
 		Vector3 pos2 = new Vector3(0, sqrt2/sqrt3,  1/sqrt3);
 		Vector3 pos3 = new Vector3(0,-sqrt2/sqrt3,  1/sqrt3);
+		*/
+		Vector3 pos0 = new Vector3(0, 0, 1); 
+		Vector3 pos1 = new Vector3(0, 2*sqrt2/3f, -1/3f);
+		Vector3 pos2 = new Vector3(sqrt2/sqrt3, -sqrt2/3f,  -1/3f);
+		Vector3 pos3 = new Vector3(-sqrt2/sqrt3, -sqrt2/3f,  -1/3f);
+		
+		
 		relativePositions[0] = new BondingPositionInfo(pos0);
 		relativePositions[1] = new BondingPositionInfo(pos1);
 		relativePositions[2] = new BondingPositionInfo(pos2);
@@ -208,14 +218,7 @@ public class Element : MonoBehaviour {
 				continue;
 			}
 			if(this.remainingCharge > 0 ){
-				/*
-				if(this.atomicNumber <= e.atomicNumber){
-					StartCoroutine(e.Attract(this));
-				}
-				if(this.atomicNumber >= e.atomicNumber){
-					StartCoroutine(this.Attract(e));
-				}
-				*/
+				
 				Debug.Log("remainingCharge > 0");
 				if(this.GetType() == typeof(Carbon)){
 					//if(this.remainingCharge == this.maxCharge){
@@ -239,7 +242,17 @@ public class Element : MonoBehaviour {
 						this.bondedNeighbours.Add(new BondingNeighbour(1, e, this,bond, 0));
 
 						e.bondedNeighbours.Add(new BondingNeighbour(1,this,e, bond, bpiIndex));
-
+						if(e.GetType() == typeof(Carbon)){
+							Vector3 vFrom = e.relativePositions[0].position + e.transform.position;
+							Vector3 vTo = e.bondedNeighbours[0].neighbour.transform.position;
+							//e.rot = Quaternion.FromToRotation(vFrom, vTo);
+							e.transform.forward = this.transform.position - e.transform.position;
+							e.rot = e.transform.rotation;
+							//e.transform.rotation.SetLookRotation(this.transform.position-e.transform.position);
+							Debug.Log(e.transform.rotation);
+							e.relativePositions[0].taken = true;
+							//Debug.Log("vFrom: " + vFrom + ", rot: " + e.rot);
+						}
 						if(e.GetType() != typeof(Oxygen)){
 							//TODO?
 						}
@@ -346,15 +359,22 @@ public class Element : MonoBehaviour {
 				//find the taken position
 				vFrom = relativePositions[0].position;
 				vTo = bondedNeighbours[0].neighbour.transform.position;
-				if((vTo-vFrom) == Vector3.zero){
-					Debug.Log("vfrom vto in same dir");
-				}
+				
 				angle = Vector3.Angle(vFrom, vTo);
+
 				rotDir = Vector3.Cross(vFrom, vTo);
-				e.transform.position = Quaternion.AngleAxis(angle, rotDir)
+				e.transform.position = this.rot //Quaternion.AngleAxis(angle, rotDir)
 					* (CHBondLength/sqrt3 * bpi.position) 
 					+ this.transform.position;
+				/*
+				if(bondedNeighbours.Count == 3){
+					Vector3 rot = Vector3.Cross(bondedNeighbours[0].neighbour.transform.position-transform.position,
+												bondedNeighbours[1].neighbour.transform.position-transform.position);
+					e.transform.position = -rot.normalized * CHBondLength/sqrt3 + this.transform.position;
+				}
+				*/
 				relativePositions[positionToBeTaken].taken = true;
+
 				return positionToBeTaken;
 			}
 		}
@@ -364,7 +384,7 @@ public class Element : MonoBehaviour {
 			if(!this.relativePositions[i].taken){
 				e.transform.position 
 					= this.transform.position 
-					+ (CHBondLength/sqrt3 * this.relativePositions[i].position);
+					+ this.rot * (CHBondLength/sqrt3 * this.relativePositions[i].position);
 		
 				this.relativePositions[i].taken = true;
 				Debug.Log(bondedNeighbours.Count + " " +  e.gameObject.name + " taking position of " + this.gameObject.name + ", " + i);
