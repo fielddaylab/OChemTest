@@ -375,10 +375,6 @@ public class Element : MonoBehaviour {
 	int SnapToBondingLocation(Element e, int index = 0){
 		//check if I am a carbon, check my neighbours and determine 
 		//my orientation and connect e
-		float angle = 0f;
-		Vector3 vFrom = Vector3.zero, vTo = Vector3.zero;
-		Vector3 rotDir = Vector3.zero;
-		Debug.Log(bondedNeighbours.Count);
 		if(this.GetType() == typeof(Carbon)){
 			//search for an empty bonding location
 			BondingPositionInfo bpi = new BondingPositionInfo(Vector3.zero, false);
@@ -397,18 +393,15 @@ public class Element : MonoBehaviour {
 				return -1;
 			}
 			
-			if(bondedNeighbours.Count > 0 
+			if(bondedNeighbours.Count >= 0 
 				&& bondedNeighbours.Count < relativePositions.Length){
-				//find the taken position
-				vFrom = relativePositions[0].position;
-				vTo = bondedNeighbours[0].neighbour.transform.position;
 				
-				angle = Vector3.Angle(vFrom, vTo);
-
-				rotDir = Vector3.Cross(vFrom, vTo);
 				e.transform.position = this.rot //Quaternion.AngleAxis(angle, rotDir)
 					* (CHBondLength/sqrt3 * bpi.position) 
 					+ this.transform.position;
+					
+
+				e.transform.parent = this.transform;
 				
 				relativePositions[positionToBeTaken].taken = true;
 
@@ -416,18 +409,6 @@ public class Element : MonoBehaviour {
 			}
 		}
 
-		//search for a bonding position that's not taken 
-		for(int i=0; i < this.relativePositions.Length; i++){
-			if(!this.relativePositions[i].taken){
-				e.transform.position 
-					= this.transform.position 
-					+ this.rot * (CHBondLength/sqrt3 * this.relativePositions[i].position);
-		
-				this.relativePositions[i].taken = true;
-				Debug.Log(bondedNeighbours.Count + " " +  e.gameObject.name + " taking position of " + this.gameObject.name + ", " + i);
-				return i;
-			}
-		}
 		return -1;
 		
 	}
