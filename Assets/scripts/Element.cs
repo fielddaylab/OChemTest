@@ -42,9 +42,9 @@ public class Element : MonoBehaviour {
 		public Element neighbour;
 		public GameObject bond;
 		//neighbours bondingpositioninfo index
-		public int bpiIndex;
+		public int bpiIndex; //index of relative position e taken at me
 
-		public BondingNeighbour(int b, Element e, Element self, GameObject bond, int bpiIndex){
+		public BondingNeighbour(int b, Element e, GameObject bond, int bpiIndex){
 			this.bondCharge = b;
 			this.neighbour = e;
 			this.bond = bond;
@@ -116,12 +116,7 @@ public class Element : MonoBehaviour {
 		//set up bonding
 		relativePositions = new BondingPositionInfo[4];
 		//for center to vertex distance = 1
-		/*
-		Vector3 pos0 = new Vector3(sqrt2/sqrt3, 0, -1/sqrt3); 
-		Vector3 pos1 = new Vector3(-sqrt2/sqrt3,0, -1/sqrt3);
-		Vector3 pos2 = new Vector3(0, sqrt2/sqrt3,  1/sqrt3);
-		Vector3 pos3 = new Vector3(0,-sqrt2/sqrt3,  1/sqrt3);
-		*/
+		
 		Vector3 pos0 = new Vector3(0, 0, 1); 
 		Vector3 pos1 = new Vector3(0, 2*sqrt2/3f, -1/3f);
 		Vector3 pos2 = new Vector3(sqrt2/sqrt3, -sqrt2/3f,  -1/3f);
@@ -208,7 +203,7 @@ public class Element : MonoBehaviour {
 
 	}
 	void OnMouseUp(){
-
+		DetachShield();
 		//check atoms within sphere
 		float shieldRadius 
 			= PlayerControl.sphereShield.GetComponent<MeshRenderer>().bounds.extents.x;
@@ -232,40 +227,32 @@ public class Element : MonoBehaviour {
 			
 			if(this.remainingCharge > 0 ){
 				
-				Debug.Log("remainingCharge > 0");
 				if(this.GetType() == typeof(Carbon)){
 					//if(this.remainingCharge == this.maxCharge){
 						//before snapping, disconnect all bonds
 						//e.DetachNeighbours();
 						//TODO: instead of disconnecting all bonds,snap group?
 						//snap e to my first bonding location
-						int bpiIndex = SnapToBondingLocation(e,bondedNeighbours.Count);
-						Debug.Log("bpiIndex: " + bpiIndex);
-						//SnapNeiboursToNewParentLocation(e);
+						//e bonding index at me
+						int eBondingIndex = IndexOfClosestAvailableBondingPosition(
+							e.transform.position, 
+							e.gameObject.GetComponent<Collider>()
+						);
+						if(eBondingIndex < 0){
+							Debug.Log(e.gameObject.name + " BondingIndex: " + eBondingIndex);
+							return;
+						}
+						//snap e's chain to me
+						int myBondingIndex = SnapToBondingLocation(e, eBondingIndex);
+						Debug.Log(e.gameObject.name + " BondingIndex: " + eBondingIndex);
 						//if e has already bonded with other atoms
+						if(myBondingIndex >= 0){
+							GameObject bond = e.CreateBondWith(this);
+							this.bondedNeighbours.Add(new BondingNeighbour(1, e, bond, eBondingIndex));
 
-						GameObject bond = CreateBondWith(e);
-						this.remainingCharge -= 1;
-						if(e.remainingCharge == 0){
-							//break an existing bond of e's
-							//Find the closest neighbour to e and break it
-							TryBreakClosestNeghbour(e);
+							e.bondedNeighbours.Add(new BondingNeighbour(1,this, bond, myBondingIndex));
 						}
-						e.remainingCharge -= 1;
-						//add each other to neighbours list with bond
-						this.bondedNeighbours.Add(new BondingNeighbour(1, e, this,bond, 0));
-
-						e.bondedNeighbours.Add(new BondingNeighbour(1,this,e, bond, bpiIndex));
-						if(e.GetType() == typeof(Carbon)){
-							/*
-							e.transform.forward = this.transform.position - e.transform.position;
-							e.rot = e.transform.rotation;
-							*/
-							e.relativePositions[0].taken = true;
-						}
-						if(e.GetType() != typeof(Oxygen)){
-							//TODO?
-						}
+						
 					//}
 				}
 				else if(this.GetType() == typeof(Hydrogen)){
@@ -283,8 +270,8 @@ public class Element : MonoBehaviour {
 
 							GameObject bond = e.CreateBondWith(this);
 
-							this.bondedNeighbours.Add(new BondingNeighbour(1, e, this, bond, bpiIndex));
-							e.bondedNeighbours.Add(new BondingNeighbour(1,this, e,bond, 0));
+							this.bondedNeighbours.Add(new BondingNeighbour(1, e, bond, bpiIndex));
+							e.bondedNeighbours.Add(new BondingNeighbour(1,this, bond, 0));
 							e.remainingCharge -=1;
 							this.remainingCharge -=1;
 						}
@@ -297,7 +284,7 @@ public class Element : MonoBehaviour {
 			}
 			
 		}
-		DetachShield();
+		
 	}
 	GameObject CreateBondWith(Element e){
 		Vector3 bondDirection = e.transform.position - this.transform.position;
@@ -315,7 +302,7 @@ public class Element : MonoBehaviour {
 	}
 	void DetachNeighbours(){
 		
-		Debug.Log(gameObject.name + " detaching neighbours");
+		//Debug.Log(gameObject.name + " detaching neighbours");
 		for(int i=0; i < relativePositions.Length; i++){
 			relativePositions[i].taken = false;
 		}
@@ -358,6 +345,7 @@ public class Element : MonoBehaviour {
 				if(neighbour.visitState == (int)VisitState.unvisited){
 					queue.Enqueue(neighbour);
 					visitedPath.Enqueue(neighbour);
+					neighbour.visitState = (int)VisitState.visiting;
 				}
 			}
 			currElement.visitState = (int)VisitState.visited;
@@ -400,16 +388,16 @@ public class Element : MonoBehaviour {
 		e.visitState = (int)VisitState.visiting;
 		while(queue.Count > 0){
 			Element currElement = queue.Dequeue();
-			int j=1;
+			
 			foreach(BondingNeighbour bondingNeighbour in currElement.bondedNeighbours){
 				Element neighbour = bondingNeighbour.neighbour;
 				
 
 				if(neighbour.visitState == (int)VisitState.unvisited){
 					
-					//int bpiIndex = bondingNeighbour.bpiIndex;
-					int bpiIndex = j;
-					Debug.Log(neighbour.gameObject.name + ", " + bpiIndex);
+					int bpiIndex = bondingNeighbour.bpiIndex;
+					//int bpiIndex = j;
+					Debug.Log(neighbour.gameObject.name + " bpi , " + bpiIndex);
 					neighbour.transform.position 
 						= currElement.rot 
 						* (CHBondLength/sqrt3 * currElement.relativePositions[bpiIndex%4].position)
@@ -418,20 +406,24 @@ public class Element : MonoBehaviour {
 					neighbour.transform.forward 
 						= currElement.transform.position - neighbour.transform.position;
 					neighbour.rot = neighbour.transform.rotation;
+					//update bond transformation
+					Vector3 bondDirection = neighbour.transform.position - currElement.transform.position;
+					Vector3 bondCenter = 0.5f*(neighbour.transform.position + currElement.transform.position);
 
-					Destroy(bondingNeighbour.bond);
-					GameObject bond = currElement.CreateBondWith(neighbour);
-					bondingNeighbour.bond = bond;
+					bondingNeighbour.bond.transform.position = bondCenter;
+					bondingNeighbour.bond.transform.rotation = Quaternion.identity;
+					bondingNeighbour.bond.transform.up = bondDirection;
 					
 					queue.Enqueue(neighbour);
 					visitedPath.Enqueue(neighbour);
-					j++;
+					neighbour.visitState = (int)VisitState.visiting;
+				
 				}
 				else if(neighbour.visitState == (int)VisitState.visiting){
-					Debug.Log(neighbour.gameObject.name + " visiting");
+					//Debug.Log(neighbour.gameObject.name + " visiting");
 				}
 				else{
-					Debug.Log(neighbour.gameObject.name + " visited");
+					//Debug.Log(neighbour.gameObject.name + " visited");
 				}
 				currElement.visitState = (int)VisitState.visited;
 			}
@@ -442,42 +434,82 @@ public class Element : MonoBehaviour {
 			visitedPath.Dequeue().visitState = (int)VisitState.unvisited;
 		}
 	}
+	int IndexOfClosestAvailableBondingPosition(Vector3 pos, Collider coll){
+		float minDist = Mathf.Infinity;
+		int retIndex = -1;
+		for(int i=0; i < relativePositions.Length;i++){
+			Vector3 bondingPos = relativePositions[i].position;
+			Vector3 potentialPosition = this.rot 
+					* (CHBondLength/sqrt3 * bondingPos) 
+					+ this.transform.position;
+
+			float dist = Vector3.Distance(pos, potentialPosition);
+			//Debug.Log("dist " + dist);
+			Collider[] hitColliders = Physics.OverlapSphere(potentialPosition, ((SphereCollider)coll).radius);
+			
+			if(dist < minDist && !relativePositions[i].taken){
+
+				if((hitColliders.Length == 1 && hitColliders[0] == coll)
+					|| hitColliders.Length == 0){
+					
+					minDist = dist;
+					retIndex = i;
+				}else{
+					if(hitColliders.Length > 1){
+						//Debug.Log(gameObject.name + " will hit other");
+					}
+					else if(hitColliders.Length == 1 && hitColliders[0] != coll){
+						//Debug.Log(gameObject.name + " will hit " + hitColliders[0].gameObject.name);
+
+					}
+					//Debug.Log(i + " taken " + relativePositions[i].taken);
+				}
+				
+			}else{
+				if(relativePositions[i].taken){
+					//Debug.Log(gameObject.name + " pos " + i + " taken");
+				}
+				Debug.Log(i + " taken " + relativePositions[i].taken);
+			}
+		}
+		return retIndex;
+	}
 	//e: element to be snapped to connect with this
-	int SnapToBondingLocation(Element e, int index = 0){
+	//other bonding index: 
+	int SnapToBondingLocation(Element e, int otherBondingIndex = 0){
+		//check if I am a carbon, check my neighbours and determine 
+		//my orientation and connect e
 		//check if I am a carbon, check my neighbours and determine 
 		//my orientation and connect e
 		if(this.GetType() == typeof(Carbon)){
-			//search for an empty bonding location
-			BondingPositionInfo bpi = new BondingPositionInfo(Vector3.zero, false);
-			bool hasUntakenPosition = false;
-			int positionToBeTaken = -1;
-			for(int i =0; i < relativePositions.Length; i++){
-				if(!relativePositions[i].taken){
-					bpi = relativePositions[i];
-					positionToBeTaken = i;
-					hasUntakenPosition = true;
-					break;
-				}
-			}
-			if(!hasUntakenPosition){
+			
+			if(otherBondingIndex < 0){
 				Debug.Log("All positions taken!");
 				return -1;
 			}
-			
+			Vector3 otherBondingPosition = relativePositions[otherBondingIndex].position;
 			if(bondedNeighbours.Count >= 0 
 				&& bondedNeighbours.Count < relativePositions.Length){
-				this.AttractChain(e, bpi.position);
+				
 				/*
 				e.transform.position = this.rot //Quaternion.AngleAxis(angle, rotDir)
 					* (CHBondLength/sqrt3 * bpi.position) 
 					+ this.transform.position;
 					
 				*/
-			//	e.transform.parent = this.transform;
+				int myBondingIndex = e.IndexOfClosestAvailableBondingPosition(
+					this.transform.position, GetComponent<Collider>());
+				if(myBondingIndex < 0){
+					return -1;
+				}
+				this.AttractChain(e, otherBondingPosition);
+				relativePositions[otherBondingIndex].taken = true;
+				e.relativePositions[myBondingIndex].taken = true;
 
-				relativePositions[positionToBeTaken].taken = true;
+				this.remainingCharge -= 1;
+				e.remainingCharge -= 1;
 
-				return positionToBeTaken;
+				return myBondingIndex;
 			}
 		}
 
