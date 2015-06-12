@@ -8,6 +8,8 @@ public class PlayerControl : MonoBehaviour {
 	public static Vector3 center;
 	public float horizontalSpeed = 2.0f;
 	public float verticalSpeed = 2.0f; 
+	public static bool moveAtomsAsGroup;
+
 	public int state;
 	public enum State{
 		HoldingAtom,
@@ -17,6 +19,7 @@ public class PlayerControl : MonoBehaviour {
 	void Awake(){
 		self = this;
 		center = Vector3.zero;
+		moveAtomsAsGroup = false;
 		camera = GetComponent<Camera>();
 		state = (int)State.Default;
 		sphereShield = GameObject.Find("SphereShield");
@@ -38,6 +41,12 @@ public class PlayerControl : MonoBehaviour {
 	}
 	// Update is called once per frame
 	void Update () {
+		if(Input.GetKey("g")){
+			moveAtomsAsGroup = true;	
+		}
+		else if(Input.GetKey("s")){
+			moveAtomsAsGroup = false;
+		}
 		if(state == (int)State.Default){
 			state = (int)State.UsingControl;
 			if(Input.GetMouseButton(0)){

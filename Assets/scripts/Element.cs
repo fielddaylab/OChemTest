@@ -16,6 +16,7 @@ public class Element : MonoBehaviour {
 
 	public static float sqrt2 = Mathf.Sqrt(2);
 	public static float sqrt3 = Mathf.Sqrt(3);
+
 	public float CHBondLength;
 	public float CCBondLength;
 	public BondingPositionInfo[] relativePositions;
@@ -111,7 +112,6 @@ public class Element : MonoBehaviour {
 		shieldScale = 4f;
 		bondedNeighbours = new List<BondingNeighbour>();
 		visitState = (int)VisitState.unvisited;
-
 		canBondWithSameType = true;
 		CHBondLength = 3f;
 		rot = Quaternion.identity;
@@ -139,7 +139,7 @@ public class Element : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-	
+		
 	}
 	//returns true if e1 and e2 were conneted and now disconnected
 	//else return false
@@ -197,7 +197,10 @@ public class Element : MonoBehaviour {
 	}
 	void OnMouseDown(){
 		AttachShield();
-		DetachNeighbours();
+		if(!PlayerControl.moveAtomsAsGroup){
+			DetachNeighbours();
+		}
+		
 	}
 	void OnMouseDrag(){
 		PlayerControl.self.state = (int)PlayerControl.State.HoldingAtom;
@@ -267,6 +270,10 @@ public class Element : MonoBehaviour {
 
 	void OnMouseUp(){
 		DetachShield();
+		if(PlayerControl.moveAtomsAsGroup){
+			DetachNeighbours();
+		}
+		
 		if(this.remainingCharge <= 0)return;
 		//check atoms within sphere
 		List<Element> eligibleAtoms = new List<Element>();
@@ -366,6 +373,15 @@ public class Element : MonoBehaviour {
 		}
 		return totalMass;
 	}
+	public void UpdateBondTransform(GameObject bond, Element neighbour){
+		//update bond transformation
+		Vector3 bondDirection = neighbour.transform.position - this.transform.position;
+		Vector3 bondCenter = 0.5f*(neighbour.transform.position + this.transform.position);
+
+		bond.transform.position = bondCenter;
+		bond.transform.rotation = Quaternion.identity;
+		bond.transform.up = bondDirection;
+	}
 	//BFS to attract a whole chain to this
 	void AttractChain(Element e, Vector3 pos){
 		
@@ -375,7 +391,7 @@ public class Element : MonoBehaviour {
 		e.transform.forward = this.transform.position - e.transform.position;
 		e.rot = e.transform.rotation;
 		
-		
+
 		Queue<Element> queue = new Queue<Element>();
 		Queue<Element> visitedPath = new Queue<Element>();
 
@@ -404,13 +420,9 @@ public class Element : MonoBehaviour {
 						= currElement.transform.position - neighbour.transform.position;
 					neighbour.rot = neighbour.transform.rotation;
 					//update bond transformation
-					Vector3 bondDirection = neighbour.transform.position - currElement.transform.position;
-					Vector3 bondCenter = 0.5f*(neighbour.transform.position + currElement.transform.position);
-
-					bondingNeighbour.bond.transform.position = bondCenter;
-					bondingNeighbour.bond.transform.rotation = Quaternion.identity;
-					bondingNeighbour.bond.transform.up = bondDirection;
+					currElement.UpdateBondTransform(bondingNeighbour.bond, neighbour);
 					
+
 					queue.Enqueue(neighbour);
 					visitedPath.Enqueue(neighbour);
 					neighbour.visitState = (int)VisitState.visiting;
@@ -526,12 +538,51 @@ public class Element : MonoBehaviour {
 		PlayerControl.sphereShield.SetActive(false);
 		PlayerControl.sphereShield.transform.parent = null;
 	}
-	void MoveWithMouse(){
+	public virtual void MoveWithMouse(){
 		Vector3 mouseInWorld = Input.mousePosition;
 		mouseInWorld.z = 10f;
 		Vector3 newAtomPosition = Camera.main.ScreenToWorldPoint(mouseInWorld);
-		transform.position = newAtomPosition;
-		
+		Vector3 positionOffset = newAtomPosition-this.transform.position;
+		if(!PlayerControl.moveAtomsAsGroup){
+			transform.position = newAtomPosition;
+			return;
+		}
+		//BFS to move as a group
+		Queue<Element> queue = new Queue<Element>();
+		Queue<Element> visitedPath = new Queue<Element>();
+
+		queue.Enqueue(this);
+		visitedPath.Enqueue(this);
+		this.visitState = (int)VisitState.visiting;
+
+		while(queue.Count > 0){
+			Element currElement = queue.Dequeue();
+			//move 
+			currElement.transform.position += positionOffset;
+			foreach(BondingNeighbour bondedNeighbour in currElement.bondedNeighbours){
+				Element neighbour = bondedNeighbour.neighbour;
+				if(neighbour.visitState == (int)VisitState.unvisited){
+					//move bond
+					// bondedNeighbour.bond
+					currElement.UpdateBondTransform(bondedNeighbour.bond, neighbour);
+					// find currElement in bondedneighbours of neighbour
+					foreach(BondingNeighbour neighboursBondedNeighbour in neighbour.bondedNeighbours){
+						if(neighboursBondedNeighbour.neighbour == currElement){
+							//neighboursBondedNeighbour.bond
+							neighbour.UpdateBondTransform(neighboursBondedNeighbour.bond, currElement);
+						}
+					}
+					queue.Enqueue(neighbour);
+					visitedPath.Enqueue(neighbour);
+					neighbour.visitState = (int)VisitState.visiting;
+				}
+			}//end foreach
+			currElement.visitState = (int)VisitState.visited;
+		}
+
+		while(visitedPath.Count > 0){
+			visitedPath.Dequeue().visitState = (int)VisitState.unvisited;
+		}
 		
 	}
 }
