@@ -374,21 +374,8 @@ public class Element : MonoBehaviour {
 					+ this.transform.position;
 		e.transform.forward = this.transform.position - e.transform.position;
 		e.rot = e.transform.rotation;
-		/*
-		int i=1;
-		foreach(BondingNeighbour bondingNeighbour in e.bondedNeighbours){
-			Element neighbour = bondingNeighbour.neighbour;
-			int bpiIndex = bondingNeighbour.bpiIndex;
-			Debug.Log(i);
-			neighbour.transform.position = e.rot
-				* (CHBondLength/sqrt3 * e.relativePositions[i%4].position)
-				+ e.transform.position;
-			neighbour.transform.forward = e.transform.position - neighbour.transform.position;
-			neighbour.rot = neighbour.transform.rotation;
-			i++;
-		}
-		return;
-		*/
+		
+		
 		Queue<Element> queue = new Queue<Element>();
 		Queue<Element> visitedPath = new Queue<Element>();
 
