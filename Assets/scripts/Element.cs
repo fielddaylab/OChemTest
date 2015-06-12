@@ -202,8 +202,45 @@ public class Element : MonoBehaviour {
 		MoveWithMouse();
 
 	}
+	//order does not matter
+	static bool HasPathBetween(Element e1, Element e2){
+		Queue<Element> queue = new Queue<Element>();
+		Queue<Element> visitedPath = new Queue<Element>();
+		queue.Enqueue(e1);
+		visitedPath.Enqueue(e1);
+
+		e1.visitState = (int)VisitState.visiting;
+
+		bool pathFound = false;
+		while(queue.Count > 0 && !pathFound){
+			Element currElement = queue.Dequeue();
+			foreach(BondingNeighbour bondedNeighbour in currElement.bondedNeighbours){
+				Element neighbour = bondedNeighbour.neighbour;
+				if(neighbour.visitState == (int)VisitState.unvisited){
+					if(neighbour == e2){
+						pathFound = true;
+						break; //break foreach
+					}
+					else{
+						queue.Enqueue(neighbour);
+						visitedPath.Enqueue(neighbour);
+						neighbour.visitState = (int)VisitState.visiting;
+					}
+				}
+
+			}//end foreach
+			currElement.visitState = (int)VisitState.visited;
+		}
+
+		//reset visit states
+		while(visitedPath.Count > 0){
+			visitedPath.Dequeue().visitState = (int)VisitState.unvisited;
+		}
+		return pathFound;
+	}
 	void OnMouseUp(){
 		DetachShield();
+		if(this.remainingCharge <= 0)return;
 		//check atoms within sphere
 		float shieldRadius 
 			= PlayerControl.sphereShield.GetComponent<MeshRenderer>().bounds.extents.x;
@@ -213,6 +250,81 @@ public class Element : MonoBehaviour {
 				PlayerControl.sphereShield.transform.position, 
 				shieldRadius);
 
+		Element closestCarbon = null;
+		float minDistCarbon2Me = Mathf.Infinity;
+		foreach(Collider c in closebyAtoms){
+			float dist = Vector3.Distance(this.transform.position, c.transform.position);
+			if(c.gameObject.GetComponent<Element>().GetType() == typeof(Carbon)
+				&& c.gameObject.GetComponent<Element>() != this){
+				if(dist < minDistCarbon2Me){
+					minDistCarbon2Me = dist;
+					closestCarbon = c.gameObject.GetComponent<Element>();
+				}
+			}
+		}
+
+		if(this.GetType() == typeof(Carbon)){
+			if(closestCarbon != null && !HasPathBetween(this, closestCarbon)){
+				int closestCarbonBondingIndex = IndexOfClosestAvailableBondingPosition(
+					closestCarbon.transform.position, 
+					closestCarbon.gameObject.GetComponent<Collider>()
+				);
+				if(closestCarbonBondingIndex < 0){
+					//Debug.Log(closestCarbon.gameObject.name + " BondingIndex: " + closestCarbonBondingIndex);
+					return;
+				}
+				//snap e's chain to me
+				int myBondingIndex = SnapToBondingLocation(closestCarbon, closestCarbonBondingIndex);
+				//Debug.Log(closestCarbon.gameObject.name + " BondingIndex: " + closestCarbonBondingIndex);
+
+				//if e has already bonded with other atoms
+				if(myBondingIndex >= 0){
+					GameObject bond = closestCarbon.CreateBondWith(this);
+					this.bondedNeighbours.Add(new BondingNeighbour(1, closestCarbon, bond, closestCarbonBondingIndex));
+
+					closestCarbon.bondedNeighbours.Add(new BondingNeighbour(1,this, bond, myBondingIndex));
+					Debug.Log(gameObject.name + " and " + closestCarbon.gameObject.name + " are connnected");
+				}
+			}
+			
+			foreach(Collider c in closebyAtoms){
+				if(c.gameObject.GetComponent<Element>() != this
+					&& c.gameObject.GetComponent<Element>() != closestCarbon){
+					//snap the rest of the atoms to me 
+					//for carbons, if they are not yet connect to me, snap them to me
+					Element otherElement = c.gameObject.GetComponent<Element>();
+					if(otherElement.GetType() == typeof(Carbon)){
+						if(!HasPathBetween(this, otherElement)){
+							Debug.Log("no path between " + gameObject.name + otherElement.gameObject.name);
+							//snap other element to me
+							int otherElementBondingIndex = IndexOfClosestAvailableBondingPosition(
+								otherElement.transform.position, 
+								otherElement.gameObject.GetComponent<Collider>()
+							);
+							if(otherElementBondingIndex < 0){
+								Debug.Log(otherElement.gameObject.name + " BondingIndex: " + otherElementBondingIndex);
+								return;
+							}
+							//snap e's chain to me
+							int myBondingIndex = SnapToBondingLocation(otherElement, otherElementBondingIndex);
+							Debug.Log(otherElement.gameObject.name + " BondingIndex: " + otherElementBondingIndex);
+							//if e has already bonded with other atoms
+							if(myBondingIndex >= 0){
+								GameObject bond = otherElement.CreateBondWith(this);
+								this.bondedNeighbours.Add(new BondingNeighbour(1, otherElement, bond, otherElementBondingIndex));
+
+								otherElement.bondedNeighbours.Add(new BondingNeighbour(1,this, bond, myBondingIndex));
+							}
+						}else{
+							Debug.Log("has path between " + gameObject.name + otherElement.gameObject.name);
+						}
+					}
+
+				}
+			}
+
+		}
+		/*
 		foreach(Collider c in closebyAtoms){
 			Element e = c.GetComponent<Element>();
 
@@ -220,9 +332,6 @@ public class Element : MonoBehaviour {
 			if(e.Equals(this)){
 				//exclude self
 				continue;
-			}
-			if(e.GetType() == typeof(Carbon)){
-				//Debug.Log(e.gameObject.name + " chain mass: " + e.CalculateChainMass());
 			}
 			
 			if(this.remainingCharge > 0 ){
@@ -284,6 +393,7 @@ public class Element : MonoBehaviour {
 			}
 			
 		}
+		*/
 		
 	}
 	GameObject CreateBondWith(Element e){
