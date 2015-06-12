@@ -238,6 +238,29 @@ public class Element : MonoBehaviour {
 		}
 		return pathFound;
 	}
+	//this: bonder
+	void Bond(Element bondee){
+		int bondeeBondingIndex = IndexOfClosestAvailableBondingPosition(
+			bondee.transform.position, 
+			bondee.gameObject.GetComponent<Collider>()
+		);
+		if(bondeeBondingIndex < 0){
+			//Debug.Log(closestCarbon.gameObject.name + " BondingIndex: " + closestCarbonBondingIndex);
+			return;
+		}
+		//snap e's chain to me
+		int myBondingIndex = SnapToBondingLocation(bondee, bondeeBondingIndex);
+		//Debug.Log(closestCarbon.gameObject.name + " BondingIndex: " + closestCarbonBondingIndex);
+
+		//if e has already bonded with other atoms
+		if(myBondingIndex >= 0){
+			GameObject bond = bondee.CreateBondWith(this);
+			this.bondedNeighbours.Add(new BondingNeighbour(1, bondee, bond, bondeeBondingIndex));
+
+			bondee.bondedNeighbours.Add(new BondingNeighbour(1,this, bond, myBondingIndex));
+			Debug.Log(gameObject.name + " and " + bondee.gameObject.name + " are connnected");
+		}
+	}
 	void OnMouseUp(){
 		DetachShield();
 		if(this.remainingCharge <= 0)return;
@@ -249,7 +272,8 @@ public class Element : MonoBehaviour {
 			= Physics.OverlapSphere(
 				PlayerControl.sphereShield.transform.position, 
 				shieldRadius);
-
+		List<Element> eligibleAtoms = new List<Element>();
+		
 		Element closestCarbon = null;
 		float minDistCarbon2Me = Mathf.Infinity;
 		foreach(Collider c in closebyAtoms){
@@ -265,26 +289,7 @@ public class Element : MonoBehaviour {
 
 		if(this.GetType() == typeof(Carbon)){
 			if(closestCarbon != null && !HasPathBetween(this, closestCarbon)){
-				int closestCarbonBondingIndex = IndexOfClosestAvailableBondingPosition(
-					closestCarbon.transform.position, 
-					closestCarbon.gameObject.GetComponent<Collider>()
-				);
-				if(closestCarbonBondingIndex < 0){
-					//Debug.Log(closestCarbon.gameObject.name + " BondingIndex: " + closestCarbonBondingIndex);
-					return;
-				}
-				//snap e's chain to me
-				int myBondingIndex = SnapToBondingLocation(closestCarbon, closestCarbonBondingIndex);
-				//Debug.Log(closestCarbon.gameObject.name + " BondingIndex: " + closestCarbonBondingIndex);
-
-				//if e has already bonded with other atoms
-				if(myBondingIndex >= 0){
-					GameObject bond = closestCarbon.CreateBondWith(this);
-					this.bondedNeighbours.Add(new BondingNeighbour(1, closestCarbon, bond, closestCarbonBondingIndex));
-
-					closestCarbon.bondedNeighbours.Add(new BondingNeighbour(1,this, bond, myBondingIndex));
-					Debug.Log(gameObject.name + " and " + closestCarbon.gameObject.name + " are connnected");
-				}
+				this.Bond(closestCarbon);
 			}
 			
 			foreach(Collider c in closebyAtoms){
@@ -293,32 +298,15 @@ public class Element : MonoBehaviour {
 					//snap the rest of the atoms to me 
 					//for carbons, if they are not yet connect to me, snap them to me
 					Element otherElement = c.gameObject.GetComponent<Element>();
-					if(otherElement.GetType() == typeof(Carbon)){
-						if(!HasPathBetween(this, otherElement)){
-							Debug.Log("no path between " + gameObject.name + otherElement.gameObject.name);
-							//snap other element to me
-							int otherElementBondingIndex = IndexOfClosestAvailableBondingPosition(
-								otherElement.transform.position, 
-								otherElement.gameObject.GetComponent<Collider>()
-							);
-							if(otherElementBondingIndex < 0){
-								Debug.Log(otherElement.gameObject.name + " BondingIndex: " + otherElementBondingIndex);
-								return;
-							}
-							//snap e's chain to me
-							int myBondingIndex = SnapToBondingLocation(otherElement, otherElementBondingIndex);
-							Debug.Log(otherElement.gameObject.name + " BondingIndex: " + otherElementBondingIndex);
-							//if e has already bonded with other atoms
-							if(myBondingIndex >= 0){
-								GameObject bond = otherElement.CreateBondWith(this);
-								this.bondedNeighbours.Add(new BondingNeighbour(1, otherElement, bond, otherElementBondingIndex));
-
-								otherElement.bondedNeighbours.Add(new BondingNeighbour(1,this, bond, myBondingIndex));
-							}
-						}else{
-							Debug.Log("has path between " + gameObject.name + otherElement.gameObject.name);
-						}
+			
+					if(!HasPathBetween(this, otherElement)){
+						Debug.Log("no path between " + gameObject.name + otherElement.gameObject.name);
+						//snap other element to me
+						this.Bond(otherElement);
+					}else{
+						Debug.Log("has path between " + gameObject.name + otherElement.gameObject.name);
 					}
+				
 
 				}
 			}
