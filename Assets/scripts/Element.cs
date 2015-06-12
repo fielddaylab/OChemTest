@@ -241,7 +241,7 @@ public class Element : MonoBehaviour {
 		return pathFound;
 	}
 	//this: bonder
-	void Bond(Element bondee){
+	public virtual void Bond(Element bondee){
 		int bondeeBondingIndex = IndexOfClosestAvailableBondingPosition(
 			bondee.transform.position, 
 			bondee.gameObject.GetComponent<Collider>()
@@ -263,41 +263,21 @@ public class Element : MonoBehaviour {
 			Debug.Log(gameObject.name + " and " + bondee.gameObject.name + " are connnected");
 		}
 	}
+	public virtual void FindElegibleAtomsForConnection(ref List<Element> eligibleAtoms){}
+
 	void OnMouseUp(){
 		DetachShield();
 		if(this.remainingCharge <= 0)return;
 		//check atoms within sphere
-		float shieldRadius 
-			= PlayerControl.sphereShield.GetComponent<MeshRenderer>().bounds.extents.x;
-
-		Collider[] closebyAtoms 
-			= Physics.OverlapSphere(
-				PlayerControl.sphereShield.transform.position, 
-				shieldRadius);
-
 		List<Element> eligibleAtoms = new List<Element>();
-		foreach(Collider c in closebyAtoms){
-			Element otherElement = c.gameObject.GetComponent<Element>();
-			if(otherElement.remainingCharge > 0 && otherElement != this){
-				float dist = Vector3.Distance(this.transform.position, otherElement.transform.position);
-				//Get chain mass
-				if(dist >= 0.001f){
-					float chainMass = otherElement.CalculateChainMass();
-					float priority = chainMass/dist;
-					otherElement.connectionPriority = priority;
-					eligibleAtoms.Add(otherElement);
-				}
-				
-			}else{
-				Debug.Log(otherElement.remainingCharge);
-				Debug.Log(otherElement == this);
-			}
-		}
-		//sort eligible atoms by priority
-		List<Element> atomsOrderedByPriority = eligibleAtoms.OrderByDescending(e=>e.connectionPriority).ToList();
-		//do we need to clear priority values in eligible atoms list?
-		//only need the first four 
+		
+		
+		this.FindElegibleAtomsForConnection(ref eligibleAtoms);
 		if(this.GetType() == typeof(Carbon)){
+			//sort eligible atoms by priority
+			List<Element> atomsOrderedByPriority = eligibleAtoms.OrderByDescending(e=>e.connectionPriority).ToList();
+			//do we need to clear priority values in eligible atoms list?
+			//only need the first four 
 			for(int i=0; i < Mathf.Min(this.maxCharge,atomsOrderedByPriority.Count) && this.remainingCharge>0; i++){
 				Element currOtherElement = atomsOrderedByPriority[i];
 				if(!HasPathBetween(this, currOtherElement)){
@@ -305,79 +285,16 @@ public class Element : MonoBehaviour {
 				}
 			}
 		}
-		
-
-		/*
-		foreach(Collider c in closebyAtoms){
-			Element e = c.GetComponent<Element>();
-
-			
-			if(e.Equals(this)){
-				//exclude self
-				continue;
+		else if(this.GetType() == typeof(Hydrogen)){
+			//attach this(hydrogen) to the C-Chain with largest priority
+			if(eligibleAtoms.Count == 0)return;
+			Element attractor = eligibleAtoms[0];
+			if(this.remainingCharge > 0 && !HasPathBetween(this, attractor)){
+				attractor.Bond(this);
 			}
-			
-			if(this.remainingCharge > 0 ){
-				
-				if(this.GetType() == typeof(Carbon)){
-					//if(this.remainingCharge == this.maxCharge){
-						//before snapping, disconnect all bonds
-						//e.DetachNeighbours();
-						//TODO: instead of disconnecting all bonds,snap group?
-						//snap e to my first bonding location
-						//e bonding index at me
-						int eBondingIndex = IndexOfClosestAvailableBondingPosition(
-							e.transform.position, 
-							e.gameObject.GetComponent<Collider>()
-						);
-						if(eBondingIndex < 0){
-							Debug.Log(e.gameObject.name + " BondingIndex: " + eBondingIndex);
-							return;
-						}
-						//snap e's chain to me
-						int myBondingIndex = SnapToBondingLocation(e, eBondingIndex);
-						Debug.Log(e.gameObject.name + " BondingIndex: " + eBondingIndex);
-						//if e has already bonded with other atoms
-						if(myBondingIndex >= 0){
-							GameObject bond = e.CreateBondWith(this);
-							this.bondedNeighbours.Add(new BondingNeighbour(1, e, bond, eBondingIndex));
 
-							e.bondedNeighbours.Add(new BondingNeighbour(1,this, bond, myBondingIndex));
-						}
-						
-					//}
-				}
-				else if(this.GetType() == typeof(Hydrogen)){
-					//H bonds with C
-					if(this.remainingCharge == 0){
-						
-						e.TryBreakClosestNeghbour(this);
-					}
-					if(this.remainingCharge > 0){
-
-						if(e.GetType() == typeof(Carbon)){
-							Debug.Log("that is carbon");
-							this.DetachNeighbours();
-							int bpiIndex = e.SnapToBondingLocation(this, e.bondedNeighbours.Count);
-
-							GameObject bond = e.CreateBondWith(this);
-
-							this.bondedNeighbours.Add(new BondingNeighbour(1, e, bond, bpiIndex));
-							e.bondedNeighbours.Add(new BondingNeighbour(1,this, bond, 0));
-							e.remainingCharge -=1;
-							this.remainingCharge -=1;
-						}
-						else if(e.GetType() == typeof(Hydrogen)){
-							//do nothing (or repel?)
-						}
-					}
-					
-				}
-			}
-			
 		}
-		*/
-		
+
 	}
 	GameObject CreateBondWith(Element e){
 		Vector3 bondDirection = e.transform.position - this.transform.position;
@@ -418,7 +335,7 @@ public class Element : MonoBehaviour {
 		bondedNeighbours.Clear();
 	}
 	//ues BFS to calcualte total mass of the chain
-	int CalculateChainMass(){
+	public virtual int CalculateChainMass(){
 		int totalMass = 0;
 		Queue<Element> queue = new Queue<Element>();
 		//used as a copy of the queue to clear the states
