@@ -83,6 +83,7 @@ public class Element : MonoBehaviour {
 	//find an element in the neighbours list, and remove it
 	public void RemoveBondingNeighbour(Element e, bool destroyBond = true){
 		GameObject bondToDestroy = null;
+		int itemToRemoveIndex = -1;
 		for(int i=0; i < bondedNeighbours.Count;i++){
 			if(bondedNeighbours[i].neighbour == e){
 				if(destroyBond){
@@ -93,17 +94,23 @@ public class Element : MonoBehaviour {
 					}
 					
 				}
+				int bpiIndex = bondedNeighbours[i].bpiIndex;
+				if(bpiIndex < 0){
+					Debug.Log("BPI INDEX < 0");
+				}else{
+					relativePositions[bpiIndex].taken = false;
+				}
+				
 
-				bondedNeighbours.RemoveAt(i);
-
-				return;
+				//bondedNeighbours[i] = null;
+				itemToRemoveIndex = i;
+				break;
 			}
 		}
+		if(itemToRemoveIndex >= 0){
+			bondedNeighbours.RemoveAt(itemToRemoveIndex);
+		}
 
-	}
-	//TODO
-	//snaps the group eInGroup is in to connect with destinationElement
-	public void SnapGroup(Element eInGroup, Element destinationElement){
 
 	}
 	public virtual void Awake(){
@@ -297,13 +304,17 @@ public class Element : MonoBehaviour {
 			if(eligibleAtoms.Count == 0)return;
 			Element attractor = eligibleAtoms[0];
 			if(this.remainingCharge > 0 && !HasPathBetween(this, attractor)){
-				attractor.Bond(this);
+				//attractor.Bond(this);
+				Debug.Log("H-C bonding");
+				this.Bond(attractor);
+			}else{
+				Debug.Log("H-C has path");
 			}
 
 		}
 
 	}
-	GameObject CreateBondWith(Element e){
+	public GameObject CreateBondWith(Element e){
 		Vector3 bondDirection = e.transform.position - this.transform.position;
 		Vector3 bondCenter = 0.5f*(e.transform.position + this.transform.position);
 		GameObject newBond = Instantiate(bondPrefab, bondCenter, Quaternion.identity) 
@@ -335,8 +346,10 @@ public class Element : MonoBehaviour {
 			//remove this from neighbour elements' neighbour list
 			//and destroy the bond object
 			neighbourElement.RemoveBondingNeighbour(this, true);
+
 			neighbourElement.remainingCharge += 1;
 			this.remainingCharge += 1;
+
 		}
 		//clear my neighbour list
 		bondedNeighbours.Clear();
@@ -443,7 +456,7 @@ public class Element : MonoBehaviour {
 			visitedPath.Dequeue().visitState = (int)VisitState.unvisited;
 		}
 	}
-	int IndexOfClosestAvailableBondingPosition(Vector3 pos, Collider coll){
+	public int IndexOfClosestAvailableBondingPosition(Vector3 pos, Collider coll){
 		float minDist = Mathf.Infinity;
 		int retIndex = -1;
 		for(int i=0; i < relativePositions.Length;i++){
@@ -455,23 +468,38 @@ public class Element : MonoBehaviour {
 			float dist = Vector3.Distance(pos, potentialPosition);
 			//Debug.Log("dist " + dist);
 			Collider[] hitColliders = Physics.OverlapSphere(potentialPosition, ((SphereCollider)coll).radius);
-			
-			if(dist < minDist && !relativePositions[i].taken){
-
-				if((hitColliders.Length == 1 && hitColliders[0] == coll)
-					|| hitColliders.Length == 0){
-					
-					minDist = dist;
-					retIndex = i;
-				}else{
-					if(hitColliders.Length > 1){
-						//Debug.Log(gameObject.name + " will hit other");
+			Debug.Log(i);
+			if(dist < minDist ){
+				if(this.GetType() == typeof(Carbon)){
+					if(relativePositions[i].taken){
+						//TODO: Debug HERE
+						Debug.Log(i + " taken " + relativePositions[i].taken +  " by");
 					}
-					else if(hitColliders.Length == 1 && hitColliders[0] != coll){
-						//Debug.Log(gameObject.name + " will hit " + hitColliders[0].gameObject.name);
+					else if((hitColliders.Length == 1 && hitColliders[0].gameObject.name == coll.gameObject.name)
+						|| hitColliders.Length == 0){
+						
+						minDist = dist;
+						retIndex = i;
+						Debug.Log(coll.gameObject.name + " retIndex: " + retIndex);
+					}else{
+						if(hitColliders.Length > 1){
+							Debug.Log(coll.gameObject.name + " will hit other");
+						}
+						else if(hitColliders.Length == 1 && hitColliders[0] != coll){
+							Debug.Log(coll.gameObject.name + " will hit " + hitColliders[0].gameObject.name
+								+ " at pos "  + i);
 
+						}
 					}
-					//Debug.Log(i + " taken " + relativePositions[i].taken);
+				}
+				else if(this.GetType() == typeof(Hydrogen)){
+					Debug.Log("this is hydrogen");
+					if((hitColliders.Length == 1 && hitColliders[0] == coll)
+						|| hitColliders.Length == 0){
+						
+						minDist = dist;
+						retIndex = i;
+					}
 				}
 				
 			}else{
@@ -485,7 +513,7 @@ public class Element : MonoBehaviour {
 	}
 	//e: element to be snapped to connect with this
 	//other bonding index: 
-	int SnapToBondingLocation(Element e, int otherBondingIndex = 0){
+	public virtual int SnapToBondingLocation(Element e, int otherBondingIndex = 0){
 		//check if I am a carbon, check my neighbours and determine 
 		//my orientation and connect e
 		//check if I am a carbon, check my neighbours and determine 
@@ -497,8 +525,7 @@ public class Element : MonoBehaviour {
 				return -1;
 			}
 			Vector3 otherBondingPosition = relativePositions[otherBondingIndex].position;
-			if(bondedNeighbours.Count >= 0 
-				&& bondedNeighbours.Count < relativePositions.Length){
+			if(remainingCharge > 0 && e.remainingCharge > 0){
 				
 				/*
 				e.transform.position = this.rot //Quaternion.AngleAxis(angle, rotDir)
@@ -506,14 +533,25 @@ public class Element : MonoBehaviour {
 					+ this.transform.position;
 					
 				*/
-				int myBondingIndex = e.IndexOfClosestAvailableBondingPosition(
-					this.transform.position, GetComponent<Collider>());
-				if(myBondingIndex < 0){
-					return -1;
+				int myBondingIndex = -1;
+				if(e.GetType() != typeof(Hydrogen)){
+					myBondingIndex = e.IndexOfClosestAvailableBondingPosition(
+						this.transform.position, GetComponent<Collider>());
+					if(myBondingIndex < 0){
+						return -1;
+					}
 				}
+				else{
+					myBondingIndex = 0;
+				}
+				
 				this.AttractChain(e, otherBondingPosition);
 				relativePositions[otherBondingIndex].taken = true;
-				e.relativePositions[myBondingIndex].taken = true;
+
+				if(e.GetType() != typeof(Hydrogen)){
+					e.relativePositions[myBondingIndex].taken = true;
+				}
+				
 
 				this.remainingCharge -= 1;
 				e.remainingCharge -= 1;
