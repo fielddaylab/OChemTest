@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 public class Element : MonoBehaviour {
 
@@ -20,6 +21,7 @@ public class Element : MonoBehaviour {
 	public BondingPositionInfo[] relativePositions;
 	public GameObject bondPrefab;
 	public Quaternion rot;
+	public float connectionPriority;
 
 	public int visitState;
 	public enum VisitState{
@@ -272,46 +274,39 @@ public class Element : MonoBehaviour {
 			= Physics.OverlapSphere(
 				PlayerControl.sphereShield.transform.position, 
 				shieldRadius);
+
 		List<Element> eligibleAtoms = new List<Element>();
-		
-		Element closestCarbon = null;
-		float minDistCarbon2Me = Mathf.Infinity;
 		foreach(Collider c in closebyAtoms){
-			float dist = Vector3.Distance(this.transform.position, c.transform.position);
-			if(c.gameObject.GetComponent<Element>().GetType() == typeof(Carbon)
-				&& c.gameObject.GetComponent<Element>() != this){
-				if(dist < minDistCarbon2Me){
-					minDistCarbon2Me = dist;
-					closestCarbon = c.gameObject.GetComponent<Element>();
+			Element otherElement = c.gameObject.GetComponent<Element>();
+			if(otherElement.remainingCharge > 0 && otherElement != this){
+				float dist = Vector3.Distance(this.transform.position, otherElement.transform.position);
+				//Get chain mass
+				if(dist >= 0.001f){
+					float chainMass = otherElement.CalculateChainMass();
+					float priority = chainMass/dist;
+					otherElement.connectionPriority = priority;
+					eligibleAtoms.Add(otherElement);
 				}
-			}
-		}
-
-		if(this.GetType() == typeof(Carbon)){
-			if(closestCarbon != null && !HasPathBetween(this, closestCarbon)){
-				this.Bond(closestCarbon);
-			}
-			
-			foreach(Collider c in closebyAtoms){
-				if(c.gameObject.GetComponent<Element>() != this
-					&& c.gameObject.GetComponent<Element>() != closestCarbon){
-					//snap the rest of the atoms to me 
-					//for carbons, if they are not yet connect to me, snap them to me
-					Element otherElement = c.gameObject.GetComponent<Element>();
-			
-					if(!HasPathBetween(this, otherElement)){
-						Debug.Log("no path between " + gameObject.name + otherElement.gameObject.name);
-						//snap other element to me
-						this.Bond(otherElement);
-					}else{
-						Debug.Log("has path between " + gameObject.name + otherElement.gameObject.name);
-					}
 				
-
+			}else{
+				Debug.Log(otherElement.remainingCharge);
+				Debug.Log(otherElement == this);
+			}
+		}
+		//sort eligible atoms by priority
+		List<Element> atomsOrderedByPriority = eligibleAtoms.OrderByDescending(e=>e.connectionPriority).ToList();
+		//do we need to clear priority values in eligible atoms list?
+		//only need the first four 
+		if(this.GetType() == typeof(Carbon)){
+			for(int i=0; i < Mathf.Min(this.maxCharge,atomsOrderedByPriority.Count) && this.remainingCharge>0; i++){
+				Element currOtherElement = atomsOrderedByPriority[i];
+				if(!HasPathBetween(this, currOtherElement)){
+					this.Bond(currOtherElement);
 				}
 			}
-
 		}
+		
+
 		/*
 		foreach(Collider c in closebyAtoms){
 			Element e = c.GetComponent<Element>();
