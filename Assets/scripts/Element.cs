@@ -304,11 +304,8 @@ public class Element : MonoBehaviour {
 			if(eligibleAtoms.Count == 0)return;
 			Element attractor = eligibleAtoms[0];
 			if(this.remainingCharge > 0 && !HasPathBetween(this, attractor)){
-				//attractor.Bond(this);
-				Debug.Log("H-C bonding");
+
 				this.Bond(attractor);
-			}else{
-				Debug.Log("H-C has path");
 			}
 
 		}
@@ -404,6 +401,12 @@ public class Element : MonoBehaviour {
 		e.transform.forward = this.transform.position - e.transform.position;
 		e.rot = e.transform.rotation;
 		
+		
+		if(this.bondedNeighbours.Count == 0){
+			this.transform.forward = e.transform.position - this.transform.position;
+			this.rot = this.transform.rotation;
+		}
+		
 
 		Queue<Element> queue = new Queue<Element>();
 		Queue<Element> visitedPath = new Queue<Element>();
@@ -468,46 +471,30 @@ public class Element : MonoBehaviour {
 			float dist = Vector3.Distance(pos, potentialPosition);
 			//Debug.Log("dist " + dist);
 			Collider[] hitColliders = Physics.OverlapSphere(potentialPosition, ((SphereCollider)coll).radius);
-			Debug.Log(i);
-			if(dist < minDist ){
-				if(this.GetType() == typeof(Carbon)){
-					if(relativePositions[i].taken){
-						//TODO: Debug HERE
-						Debug.Log(i + " taken " + relativePositions[i].taken +  " by");
-					}
-					else if((hitColliders.Length == 1 && hitColliders[0].gameObject.name == coll.gameObject.name)
-						|| hitColliders.Length == 0){
-						
-						minDist = dist;
-						retIndex = i;
-						Debug.Log(coll.gameObject.name + " retIndex: " + retIndex);
-					}else{
-						if(hitColliders.Length > 1){
-							Debug.Log(coll.gameObject.name + " will hit other");
-						}
-						else if(hitColliders.Length == 1 && hitColliders[0] != coll){
-							Debug.Log(coll.gameObject.name + " will hit " + hitColliders[0].gameObject.name
-								+ " at pos "  + i);
+			
+			if(this.GetType() == typeof(Carbon)){
+				if(hitColliders.Length == 1 && hitColliders[0] != coll){
+				//this position has been taken
 
-						}
-					}
 				}
-				else if(this.GetType() == typeof(Hydrogen)){
-					Debug.Log("this is hydrogen");
-					if((hitColliders.Length == 1 && hitColliders[0] == coll)
-						|| hitColliders.Length == 0){
-						
+				else if(hitColliders.Length == 1 && hitColliders[0] == coll
+					|| hitColliders.Length == 0){
+					if(dist < minDist){
 						minDist = dist;
 						retIndex = i;
 					}
 				}
-				
-			}else{
-				if(relativePositions[i].taken){
-					//Debug.Log(gameObject.name + " pos " + i + " taken");
-				}
-				Debug.Log(i + " taken " + relativePositions[i].taken);
 			}
+			else if(this.GetType() == typeof(Hydrogen)){
+				Debug.Log("this is hydrogen");
+				if((hitColliders.Length == 1 && hitColliders[0] == coll)
+					|| hitColliders.Length == 0){
+					
+					minDist = dist;
+					retIndex = i;
+				}
+			}
+			
 		}
 		return retIndex;
 	}

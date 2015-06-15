@@ -33,9 +33,13 @@ public class Hydrogen : Element {
 			this.transform.position = attractor.rot 
 					* (CHBondLength/sqrt3 * myRelativeBondingPosition) 
 					+ attractor.transform.position;
+
 			this.transform.forward = attractor.transform.position - this.transform.position;
 			this.rot = this.transform.rotation;
-
+			if(attractor.bondedNeighbours.Count == 0){
+				attractor.transform.forward = this.transform.position - attractor.transform.position;
+				attractor.rot = attractor.transform.rotation;
+			}
 			//-----------
 			attractor.relativePositions[myBondingIndex].taken = true;
 
@@ -45,7 +49,6 @@ public class Hydrogen : Element {
 			return myBondingIndex;
 		}
 		
-		Debug.Log("not bonding: h remainingCharge < 0");
 		return -1;
 		
 	}
@@ -57,14 +60,11 @@ public class Hydrogen : Element {
 
 		//if e has already bonded with other atoms
 		if(myBondingIndex >= 0){
-			Debug.Log("in H: BONDING");
 			GameObject bond = attractor.CreateBondWith(this);
 			this.bondedNeighbours.Add(new BondingNeighbour(1, attractor, bond, 0));
 
 			attractor.bondedNeighbours.Add(new BondingNeighbour(1,this, bond, myBondingIndex));
-			Debug.Log(gameObject.name + " and " + attractor.gameObject.name + " are connnected");
 		}else{
-			Debug.Log("in H: not BONDING");
 		}
 	}
 	public override void FindElegibleAtomsForConnection(ref List<Element> eligibleAtoms){
@@ -78,7 +78,7 @@ public class Hydrogen : Element {
 
 		float maxPriority = -1f;
 		Element elementWithMaxAttraction = null;
-		Debug.Log("H's closebyAtoms Length: " + closebyAtoms.Length);
+
 		foreach(Collider c in closebyAtoms){
 			Element otherElement = c.gameObject.GetComponent<Element>();
 			if(otherElement.GetType() != typeof(Hydrogen) 
@@ -91,14 +91,12 @@ public class Hydrogen : Element {
 					float chainMass = otherElement.CalculateChainMass();
 					float priority = chainMass/dist;
 					otherElement.connectionPriority = priority;
-					Debug.Log(gameObject.name + " and " + otherElement.gameObject.name + " priority: " + priority);
+
 					if(otherElement.connectionPriority > maxPriority){
 						maxPriority = otherElement.connectionPriority;
 						elementWithMaxAttraction = otherElement;
-						Debug.Log(" > max");
 					}
 
-					//Debug.Log(gameObject.name + " and " + otherElement.gameObject.name + " dist: " + dist);
 				}
 				
 			}else{
@@ -106,10 +104,7 @@ public class Hydrogen : Element {
 			}
 		}
 		if(elementWithMaxAttraction != null){
-			Debug.Log("not null");
 			eligibleAtoms.Add(elementWithMaxAttraction);
-		}else{
-			Debug.Log("is null");
 		}
 			
 	}

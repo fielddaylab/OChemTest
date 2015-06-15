@@ -37,8 +37,6 @@ public class Carbon : Element {
 				}
 				
 			}else{
-				Debug.Log(otherElement.remainingCharge);
-				Debug.Log(otherElement == this);
 			}
 		}
 	}
