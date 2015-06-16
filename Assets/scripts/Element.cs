@@ -23,7 +23,7 @@ public class Element : MonoBehaviour {
 	public GameObject bondPrefab;
 	public Quaternion rot;
 	public float connectionPriority;
-
+	public static GameObject helperSphere;
 	public int visitState;
 	public enum VisitState{
 		unvisited,
@@ -122,6 +122,7 @@ public class Element : MonoBehaviour {
 		canBondWithSameType = true;
 		CHBondLength = 3f;
 		rot = Quaternion.identity;
+		helperSphere = GameObject.Find("helperSphere");
 		//set up bonding
 		relativePositions = new BondingPositionInfo[4];
 		//for center to vertex distance = 1
@@ -267,10 +268,24 @@ public class Element : MonoBehaviour {
 		//if e has already bonded with other atoms
 		if(myBondingIndex >= 0){
 			GameObject bond = bondee.CreateBondWith(this);
+			foreach(BondingNeighbour neighbour in this.bondedNeighbours){
+				if(neighbour.bpiIndex == bondeeBondingIndex && neighbour.neighbour != bondee){
+					Debug.Log(this.gameObject.name + " already has neighbour " 
+						+ neighbour.neighbour.gameObject.name + " at pos " + bondeeBondingIndex
+						+ ", new neighbour " + bondee.gameObject.name);
+				}
+			}
 			this.bondedNeighbours.Add(new BondingNeighbour(1, bondee, bond, bondeeBondingIndex));
 
+
+			foreach(BondingNeighbour neighbour in bondee.bondedNeighbours){
+				if(neighbour.bpiIndex == myBondingIndex && neighbour.neighbour != this){
+					Debug.Log(bondee.gameObject.name + " already has neighbour " 
+						+ neighbour.neighbour.gameObject.name + " at pos " + myBondingIndex
+						+ ", new neighbour " + this.gameObject.name);
+				}
+			}
 			bondee.bondedNeighbours.Add(new BondingNeighbour(1,this, bond, myBondingIndex));
-			Debug.Log(gameObject.name + " and " + bondee.gameObject.name + " are connnected");
 		}
 	}
 	public virtual void FindElegibleAtomsForConnection(ref List<Element> eligibleAtoms){}
@@ -393,8 +408,11 @@ public class Element : MonoBehaviour {
 		bond.transform.up = bondDirection;
 	}
 	//BFS to attract a whole chain to this
-	void AttractChain(Element e, Vector3 pos){
+	//return this bpiIndex at e
+	int AttractChain(Element e, Vector3 pos){
 		
+		int thisBPIatE = -1;
+
 		e.transform.position = this.rot 
 					* (CHBondLength/sqrt3 * pos) 
 					+ this.transform.position;
@@ -406,8 +424,15 @@ public class Element : MonoBehaviour {
 			this.transform.forward = e.transform.position - this.transform.position;
 			this.rot = this.transform.rotation;
 		}
+		//calculate this' bpi at e
+		for(int i=0; i < e.relativePositions.Length; i++){
+			Vector3 p = e.rot * (CHBondLength/sqrt3 * e.relativePositions[i].position) + e.transform.position;
+			if(Vector3.Distance(p, this.transform.position) < 0.01f){
+				thisBPIatE = i;
+				break;
+			}
+		}
 		
-
 		Queue<Element> queue = new Queue<Element>();
 		Queue<Element> visitedPath = new Queue<Element>();
 
@@ -425,13 +450,38 @@ public class Element : MonoBehaviour {
 				if(neighbour.visitState == (int)VisitState.unvisited){
 					
 					int bpiIndex = bondingNeighbour.bpiIndex;
-					//int bpiIndex = j;
-					Debug.Log(neighbour.gameObject.name + " bpi , " + bpiIndex);
+
+
+					Vector3 newPosition = currElement.rot 
+						* (CHBondLength/sqrt3 * currElement.relativePositions[bpiIndex].position)
+						+ currElement.transform.position;
+					Vector3 newForward = currElement.transform.position - newPosition;
+					helperSphere.transform.position = newPosition;
+					helperSphere.transform.forward = newForward;
+					Quaternion newRot = helperSphere.transform.rotation;
+					//find neighbour in currElement's neighbour list and change its bpiindex to 0
+					
+					for(int i=0; i < neighbour.bondedNeighbours.Count; i++){
+						BondingNeighbour bn = neighbour.bondedNeighbours[i];
+						if(bn.neighbour == currElement){
+							bn.bpiIndex = 0;
+							break;
+						}
+					}
+					
+					int oldBPI = bpiIndex;
+					int newNeighbourBPI = currElement.IndexOfClosestAvailableBondingPosition(
+						newPosition, neighbour.GetComponent<Collider>());
+					bpiIndex = newNeighbourBPI;
+					bondingNeighbour.bpiIndex = bpiIndex;
+					Debug.Log("new bpi: " + neighbour.gameObject.name + " at " + currElement.gameObject.name
+						+ ": " + bpiIndex + ", old bpi: " + oldBPI);
+					
 					neighbour.transform.position 
 						= currElement.rot 
-						* (CHBondLength/sqrt3 * currElement.relativePositions[bpiIndex%4].position)
+						* (CHBondLength/sqrt3 * currElement.relativePositions[bpiIndex].position)
 						+ currElement.transform.position;
-
+					
 					neighbour.transform.forward 
 						= currElement.transform.position - neighbour.transform.position;
 					neighbour.rot = neighbour.transform.rotation;
@@ -444,12 +494,6 @@ public class Element : MonoBehaviour {
 					neighbour.visitState = (int)VisitState.visiting;
 				
 				}
-				else if(neighbour.visitState == (int)VisitState.visiting){
-					//Debug.Log(neighbour.gameObject.name + " visiting");
-				}
-				else{
-					//Debug.Log(neighbour.gameObject.name + " visited");
-				}
 				currElement.visitState = (int)VisitState.visited;
 			}
 		}
@@ -458,6 +502,7 @@ public class Element : MonoBehaviour {
 		while(visitedPath.Count > 0){
 			visitedPath.Dequeue().visitState = (int)VisitState.unvisited;
 		}
+		return thisBPIatE;
 	}
 	public int IndexOfClosestAvailableBondingPosition(Vector3 pos, Collider coll){
 		float minDist = Mathf.Infinity;
@@ -473,11 +518,11 @@ public class Element : MonoBehaviour {
 			Collider[] hitColliders = Physics.OverlapSphere(potentialPosition, ((SphereCollider)coll).radius);
 			
 			if(this.GetType() == typeof(Carbon)){
-				if(hitColliders.Length == 1 && hitColliders[0] != coll){
+				if(hitColliders.Length == 1 && hitColliders[0].GetInstanceID() != coll.GetInstanceID()){
 				//this position has been taken
 
 				}
-				else if(hitColliders.Length == 1 && hitColliders[0] == coll
+				else if(hitColliders.Length == 1 && hitColliders[0].GetInstanceID() == coll.GetInstanceID()
 					|| hitColliders.Length == 0){
 					if(dist < minDist){
 						minDist = dist;
@@ -486,7 +531,6 @@ public class Element : MonoBehaviour {
 				}
 			}
 			else if(this.GetType() == typeof(Hydrogen)){
-				Debug.Log("this is hydrogen");
 				if((hitColliders.Length == 1 && hitColliders[0] == coll)
 					|| hitColliders.Length == 0){
 					
@@ -532,7 +576,7 @@ public class Element : MonoBehaviour {
 					myBondingIndex = 0;
 				}
 				
-				this.AttractChain(e, otherBondingPosition);
+				myBondingIndex = this.AttractChain(e, otherBondingPosition);
 				relativePositions[otherBondingIndex].taken = true;
 
 				if(e.GetType() != typeof(Hydrogen)){

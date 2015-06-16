@@ -100,7 +100,6 @@ public class Hydrogen : Element {
 				}
 				
 			}else{
-				Debug.Log(otherElement.gameObject.name + " remaining charge: " +otherElement.remainingCharge);
 			}
 		}
 		if(elementWithMaxAttraction != null){
