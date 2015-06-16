@@ -10,15 +10,11 @@ public class Element : MonoBehaviour {
 	public int remainingCharge;
 	public int atomicNumber;  //number of protons
 	public float shieldScale;
-	public float speed;
-	public float accleration;
-	public bool canBondWithSameType;
 
 	public static float sqrt2 = Mathf.Sqrt(2);
 	public static float sqrt3 = Mathf.Sqrt(3);
 
-	public float CHBondLength;
-	public float CCBondLength;
+	public float bondLength;
 	public BondingPositionInfo[] relativePositions;
 	public GameObject bondPrefab;
 	public Quaternion rot;
@@ -114,13 +110,11 @@ public class Element : MonoBehaviour {
 
 	}
 	public virtual void Awake(){
-		speed = 0f;
-		accleration = 1f;
 		shieldScale = 4f;
 		bondedNeighbours = new List<BondingNeighbour>();
 		visitState = (int)VisitState.unvisited;
-		canBondWithSameType = true;
-		CHBondLength = 3f;
+	
+		bondLength = 3f;
 		rot = Quaternion.identity;
 		helperSphere = GameObject.Find("helperSphere");
 		//set up bonding
@@ -188,6 +182,8 @@ public class Element : MonoBehaviour {
 		//other.gameObject.GetComponent<Element>().StopMyCoroutines();
 		GetComponent<Rigidbody>().velocity = Vector3.zero;
 		GetComponent<Rigidbody>().AddForce(Vector3.zero);
+		other.gameObject.GetComponent<Rigidbody>().velocity = Vector3.zero;
+		other.gameObject.GetComponent<Rigidbody>().AddForce(Vector3.zero);
 		//other.gameObject.GetComponent<Element>().DetachNeighbours();
 		
 				
@@ -195,6 +191,8 @@ public class Element : MonoBehaviour {
 	void OnCollisionStay(Collision other){
 		GetComponent<Rigidbody>().velocity = Vector3.zero;
 		GetComponent<Rigidbody>().AddForce(Vector3.zero);
+		other.gameObject.GetComponent<Rigidbody>().velocity = Vector3.zero;
+		other.gameObject.GetComponent<Rigidbody>().AddForce(Vector3.zero);
 	}
 	void OnCollisionExit(Collision other){
 		
@@ -266,7 +264,7 @@ public class Element : MonoBehaviour {
 		//update bondeeindex at this
 		for(int i=0; i < this.relativePositions.Length; i++){
 			Vector3 p 
-				= this.rot * (CHBondLength/sqrt3 * this.relativePositions[i].position) + this.transform.position;
+				= this.rot * (bondLength/sqrt3 * this.relativePositions[i].position) + this.transform.position;
 			if(Vector3.Distance(p,bondee.transform.position) < 0.01f){
 				bondeeBondingIndex = i;
 				break;
@@ -318,7 +316,7 @@ public class Element : MonoBehaviour {
 			//only need the first four 
 			for(int i=0; i < Mathf.Min(this.maxCharge,atomsOrderedByPriority.Count) && this.remainingCharge>0; i++){
 				Element currOtherElement = atomsOrderedByPriority[i];
-				if(!HasPathBetween(this, currOtherElement)){
+				if(currOtherElement.remainingCharge > 0 && !HasPathBetween(this, currOtherElement)){
 					this.Bond(currOtherElement);
 				}
 			}
@@ -423,7 +421,7 @@ public class Element : MonoBehaviour {
 		int thisBPIatE = -1;
 
 		e.transform.position = this.rot 
-					* (CHBondLength/sqrt3 * pos) 
+					* (bondLength/sqrt3 * pos) 
 					+ this.transform.position;
 		e.transform.forward = this.transform.position - e.transform.position;
 		e.rot = e.transform.rotation;
@@ -434,12 +432,20 @@ public class Element : MonoBehaviour {
 			this.rot = this.transform.rotation;
 		}
 		//calculate this' bpi at e
-		for(int i=0; i < e.relativePositions.Length; i++){
-			Vector3 p = e.rot * (CHBondLength/sqrt3 * e.relativePositions[i].position) + e.transform.position;
-			if(Vector3.Distance(p, this.transform.position) < 0.01f){
-				thisBPIatE = i;
-				break;
+		if(e.GetType() == typeof(Carbon)){
+			for(int i=0; i < e.relativePositions.Length; i++){
+				Vector3 p = e.rot * (bondLength/sqrt3 * e.relativePositions[i].position) + e.transform.position;
+				if(Vector3.Distance(p, this.transform.position) < 0.01f){
+					thisBPIatE = i;
+					break;
+				}
 			}
+		}
+		else if(e.GetType() == typeof(Hydrogen)){
+			thisBPIatE = 0;
+		}
+		if(thisBPIatE < 0){
+			Debug.Log(this.gameObject.name + " updated BPI at " + e.gameObject.name + " < 0" );
 		}
 		
 		Queue<Element> queue = new Queue<Element>();
@@ -460,14 +466,17 @@ public class Element : MonoBehaviour {
 					
 					int bpiIndex = bondingNeighbour.bpiIndex;
 
-
+					if(bpiIndex < 0){
+						Debug.Log(neighbour.gameObject.name + " bpiIndex out of range of " 
+							+ currElement.gameObject.name + bpiIndex);
+						bpiIndex = currElement.IndexOfClosestAvailableBondingPosition(
+							neighbour.transform.position, neighbour.GetComponent<Collider>());
+					}
 					Vector3 newPosition = currElement.rot 
-						* (CHBondLength/sqrt3 * currElement.relativePositions[bpiIndex].position)
+						* (bondLength/sqrt3 * currElement.relativePositions[bpiIndex].position)
 						+ currElement.transform.position;
 					Vector3 newForward = currElement.transform.position - newPosition;
-					helperSphere.transform.position = newPosition;
-					helperSphere.transform.forward = newForward;
-					Quaternion newRot = helperSphere.transform.rotation;
+
 					//find neighbour in currElement's neighbour list and change its bpiindex to 0
 					
 					for(int i=0; i < neighbour.bondedNeighbours.Count; i++){
@@ -485,10 +494,14 @@ public class Element : MonoBehaviour {
 					bondingNeighbour.bpiIndex = bpiIndex;
 					Debug.Log("new bpi: " + neighbour.gameObject.name + " at " + currElement.gameObject.name
 						+ ": " + bpiIndex + ", old bpi: " + oldBPI);
-					
+					//TODO: check if new bpiIndex < 0
+					//this should NOT happen!
+					if(bpiIndex < 0){
+						bpiIndex = bpiIndex +4;
+					}
 					neighbour.transform.position 
 						= currElement.rot 
-						* (CHBondLength/sqrt3 * currElement.relativePositions[bpiIndex].position)
+						* (bondLength/sqrt3 * currElement.relativePositions[bpiIndex].position)
 						+ currElement.transform.position;
 					
 					neighbour.transform.forward 
@@ -519,7 +532,7 @@ public class Element : MonoBehaviour {
 		for(int i=0; i < relativePositions.Length;i++){
 			Vector3 bondingPos = relativePositions[i].position;
 			Vector3 potentialPosition = this.rot 
-					* (CHBondLength/sqrt3 * bondingPos) 
+					* (bondLength/sqrt3 * bondingPos) 
 					+ this.transform.position;
 
 			float dist = Vector3.Distance(pos, potentialPosition);

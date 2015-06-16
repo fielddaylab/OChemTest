@@ -13,7 +13,6 @@ public class Carbon : Element {
 		maxCharge = 4;
 		remainingCharge = maxCharge;
 		name = "C";
-		canBondWithSameType = true;
 	}
 	public override void FindElegibleAtomsForConnection(ref List<Element> eligibleAtoms){
 		float shieldRadius 

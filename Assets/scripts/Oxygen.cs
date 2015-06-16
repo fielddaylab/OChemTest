@@ -10,7 +10,6 @@ public class Oxygen : Element{
 		maxCharge = 2;
 		remainingCharge = maxCharge;
 		name = "O";
-		canBondWithSameType = false;
 	}
 	// Use this for initialization
 	void Start () {

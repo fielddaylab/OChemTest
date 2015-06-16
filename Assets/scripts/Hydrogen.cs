@@ -11,7 +11,6 @@ public class Hydrogen : Element {
 		maxCharge = 1;
 		remainingCharge = maxCharge;
 		name = "H";
-		canBondWithSameType = false;
 	}
 	//snap me to e
 	public override int SnapToBondingLocation(Element attractor, int index=0){
@@ -31,7 +30,7 @@ public class Hydrogen : Element {
 			//-----------
 			Vector3 myRelativeBondingPosition = attractor.relativePositions[myBondingIndex].position;
 			this.transform.position = attractor.rot 
-					* (CHBondLength/sqrt3 * myRelativeBondingPosition) 
+					* (bondLength/sqrt3 * myRelativeBondingPosition) 
 					+ attractor.transform.position;
 
 			this.transform.forward = attractor.transform.position - this.transform.position;
@@ -45,7 +44,15 @@ public class Hydrogen : Element {
 
 			this.remainingCharge -= 1;
 			attractor.remainingCharge -= 1;
-
+			//update myBondingIndex
+			for(int i=0; i < attractor.relativePositions.Length; i++){
+				Vector3 p = attractor.rot * (bondLength/sqrt3 * attractor.relativePositions[i].position)
+					+ attractor.transform.position;
+				if(Vector3.Distance(p, this.transform.position) < 0.01f){
+					myBondingIndex = i;
+					break;
+				}
+			}
 			return myBondingIndex;
 		}
 		
@@ -53,7 +60,6 @@ public class Hydrogen : Element {
 		
 	}
 	public override void Bond(Element attractor){
-		//snap e's chain to me
 		//snap me to attractor's chain
 		int myBondingIndex = this.SnapToBondingLocation(attractor);
 		//Debug.Log(closestCarbon.gameObject.name + " BondingIndex: " + closestCarbonBondingIndex);
