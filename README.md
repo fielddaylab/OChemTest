@@ -19,6 +19,7 @@
 	e.transform.forward = this.transform.position - e.transform.position;
 	e.rot = e.transform.rotation;
   ```
+
 ## Notes
 
 1. Drawback: this makes forming rings impossible <br />
