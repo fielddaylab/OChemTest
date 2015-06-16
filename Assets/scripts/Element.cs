@@ -19,7 +19,7 @@ public class Element : MonoBehaviour {
 	public GameObject bondPrefab;
 	public Quaternion rot;
 	public float connectionPriority;
-	public static GameObject helperSphere;
+
 	public int visitState;
 	public enum VisitState{
 		unvisited,
@@ -53,29 +53,7 @@ public class Element : MonoBehaviour {
 	}
 	public List<BondingNeighbour> bondedNeighbours;
 
-	//find the bondee in e that is the closest to this
-	public Element ClosestNeighbourOf(Element e){
-		Element element2Debond = null;
-		float minDist = 100f;
-		foreach(BondingNeighbour bn in e.bondedNeighbours){
-			float d = Vector3.Distance(bn.neighbour.transform.position, this.transform.position);
-			if(d < minDist){
-				minDist = d;
-				element2Debond = bn.neighbour;
-			}
-		}
-		return element2Debond;
-	}
-	public void TryBreakClosestNeghbour(Element e){
-		Element element2Debond = this.ClosestNeighbourOf(e);
-
-		if(element2Debond != null){
-			e.RemoveBondingNeighbour(element2Debond, true);
-			element2Debond.RemoveBondingNeighbour(e, true);
-			e.remainingCharge += 1;
-			element2Debond.remainingCharge += 1;
-		}
-	}
+	
 	//find an element in the neighbours list, and remove it
 	public void RemoveBondingNeighbour(Element e, bool destroyBond = true){
 		GameObject bondToDestroy = null;
@@ -116,7 +94,6 @@ public class Element : MonoBehaviour {
 	
 		bondLength = 3f;
 		rot = Quaternion.identity;
-		helperSphere = GameObject.Find("helperSphere");
 		//set up bonding
 		relativePositions = new BondingPositionInfo[4];
 		//for center to vertex distance = 1
@@ -344,7 +321,9 @@ public class Element : MonoBehaviour {
 		
 		Vector3 defaultScale = newBond.transform.localScale;
 		newBond.transform.localScale 
-			= new Vector3(defaultScale.x, bondDirection.magnitude-1f, defaultScale.z);
+			= new Vector3(defaultScale.x, 
+				bondDirection.magnitude - this.GetComponent<SphereCollider>().radius - e.GetComponent<SphereCollider>().radius, 
+				defaultScale.z);
 		return newBond;
 	}
 	void DetachNeighbours(){
