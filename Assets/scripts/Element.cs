@@ -263,6 +263,15 @@ public class Element : MonoBehaviour {
 		}
 		//snap e's chain to me
 		int myBondingIndex = SnapToBondingLocation(bondee, bondeeBondingIndex);
+		//update bondeeindex at this
+		for(int i=0; i < this.relativePositions.Length; i++){
+			Vector3 p 
+				= this.rot * (CHBondLength/sqrt3 * this.relativePositions[i].position) + this.transform.position;
+			if(Vector3.Distance(p,bondee.transform.position) < 0.01f){
+				bondeeBondingIndex = i;
+				break;
+			}
+		}
 		//Debug.Log(closestCarbon.gameObject.name + " BondingIndex: " + closestCarbonBondingIndex);
 
 		//if e has already bonded with other atoms
@@ -558,12 +567,6 @@ public class Element : MonoBehaviour {
 			Vector3 otherBondingPosition = relativePositions[otherBondingIndex].position;
 			if(remainingCharge > 0 && e.remainingCharge > 0){
 				
-				/*
-				e.transform.position = this.rot //Quaternion.AngleAxis(angle, rotDir)
-					* (CHBondLength/sqrt3 * bpi.position) 
-					+ this.transform.position;
-					
-				*/
 				int myBondingIndex = -1;
 				if(e.GetType() != typeof(Hydrogen)){
 					myBondingIndex = e.IndexOfClosestAvailableBondingPosition(
