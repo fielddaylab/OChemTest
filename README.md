@@ -8,6 +8,17 @@
   &sup1; Drawback: this makes forming rings impossible
 
 - How bonding works <br />
+  A chain is snapped to the atom that was held, and the latter does not move because it's superpowered. <br />
+  The closest of available bonding position at the latter is found. Using breadth first search, update each atom position and   rotation in the chain. For example: 
+  ```c#
+    //e: atom in the chain
+    //this: atom that was held
+    e.transform.position = this.rot 
+	    * (CHBondLength/sqrt3 * pos) 
+		+ this.transform.position;
+	e.transform.forward = this.transform.position - e.transform.position;
+	e.rot = e.transform.rotation;
+  ```
   
 ## Bugs
 - When dragging a carbon to attract multiple atoms, if one of them is hydrogen, the hydrogen might return -1 (no bonding   position available) as its bonding position at this carbon even if this carbon still has positions available.
