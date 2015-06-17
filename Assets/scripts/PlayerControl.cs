@@ -10,10 +10,12 @@ public class PlayerControl : MonoBehaviour {
 	public float verticalSpeed = 2.0f; 
 	public static bool moveAtomsAsGroup;
 
+	private Element atomBeingHeld;
+
 	public int state;
 	public enum State{
 		HoldingAtom,
-		UsingControl,
+		AddingAtom,
 		Default
 	};
 	void Awake(){
@@ -21,6 +23,7 @@ public class PlayerControl : MonoBehaviour {
 		center = Vector3.zero;
 		moveAtomsAsGroup = false;
 		camera = GetComponent<Camera>();
+		atomBeingHeld = null;
 		state = (int)State.Default;
 		sphereShield = GameObject.Find("SphereShield");
 		
@@ -39,6 +42,25 @@ public class PlayerControl : MonoBehaviour {
 		transform.RotateAround(center, transform.rotation*Vector3.up, yRotation * Mathf.Rad2Deg);
 		transform.RotateAround(center, transform.rotation*Vector3.left, rightRotation * Mathf.Rad2Deg);
 	}
+	public void OnAddAtom(Element e){
+		Vector3 spawnPosition;
+		Vector3 mousePosition = Input.mousePosition;
+		//add depth
+		mousePosition.z = 10f;
+		spawnPosition = camera.ScreenToWorldPoint(mousePosition);
+		GameObject newAtom = GameObject.Instantiate(e.gameObject, spawnPosition, Quaternion.identity) as GameObject;
+		atomBeingHeld = newAtom.GetComponent<Element>();
+		//find bondPrefab
+		atomBeingHeld.bondPrefab = GameObject.Find("BondPrefab");
+		//change state
+		state = (int)State.AddingAtom;
+	}
+	void MoveAtomWithMouse(){
+		Vector3 mousePosition = Input.mousePosition;
+		mousePosition.z = 10f;
+		Vector3 newAtomPosition = camera.ScreenToWorldPoint(mousePosition);
+		atomBeingHeld.transform.position = newAtomPosition;
+	}
 	// Update is called once per frame
 	void Update () {
 		if(Input.GetKey("g")){
@@ -48,17 +70,19 @@ public class PlayerControl : MonoBehaviour {
 			moveAtomsAsGroup = false;
 		}
 		if(state == (int)State.Default){
-			state = (int)State.UsingControl;
 			if(Input.GetMouseButton(0)){
 				RotateCameraAroundCenter();
 			}	
-		}else if(state == (int)State.UsingControl){
-			if(Input.GetMouseButton(0)){
-				RotateCameraAroundCenter();
-			}
 		}else if(state == (int)State.HoldingAtom){
 
 		} 
+		else if(state == (int)State.AddingAtom){
+			MoveAtomWithMouse();
+			//if click, release atom, changing state to default
+			if(Input.GetMouseButtonDown(0)){
+				state = (int)State.Default;
+			}
+		}
 		
 	}
 }

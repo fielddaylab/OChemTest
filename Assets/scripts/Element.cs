@@ -179,6 +179,7 @@ public class Element : MonoBehaviour {
 
 	}
 	void OnMouseDown(){
+		if(PlayerControl.self.state != (int)(PlayerControl.State.Default))return;
 		AttachShield();
 		if(!PlayerControl.moveAtomsAsGroup){
 			DetachNeighbours();
@@ -275,6 +276,7 @@ public class Element : MonoBehaviour {
 	public virtual void FindElegibleAtomsForConnection(ref List<Element> eligibleAtoms){}
 
 	void OnMouseUp(){
+		if(PlayerControl.self.state != (int)(PlayerControl.State.HoldingAtom))return;
 		DetachShield();
 		if(PlayerControl.moveAtomsAsGroup){
 			DetachNeighbours();
