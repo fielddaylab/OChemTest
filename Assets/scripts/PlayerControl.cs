@@ -46,7 +46,7 @@ public class PlayerControl : MonoBehaviour {
 		Vector3 spawnPosition;
 		Vector3 mousePosition = Input.mousePosition;
 		//add depth
-		mousePosition.z = 10f;
+		mousePosition.z = 8f;
 		spawnPosition = camera.ScreenToWorldPoint(mousePosition);
 		GameObject newAtom = GameObject.Instantiate(e.gameObject, spawnPosition, Quaternion.identity) as GameObject;
 		atomBeingHeld = newAtom.GetComponent<Element>();
@@ -57,7 +57,7 @@ public class PlayerControl : MonoBehaviour {
 	}
 	void MoveAtomWithMouse(){
 		Vector3 mousePosition = Input.mousePosition;
-		mousePosition.z = 10f;
+		mousePosition.z = 8f;
 		Vector3 newAtomPosition = camera.ScreenToWorldPoint(mousePosition);
 		atomBeingHeld.transform.position = newAtomPosition;
 	}

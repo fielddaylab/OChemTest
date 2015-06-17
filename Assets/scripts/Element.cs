@@ -92,7 +92,7 @@ public class Element : MonoBehaviour {
 		bondedNeighbours = new List<BondingNeighbour>();
 		visitState = (int)VisitState.unvisited;
 	
-		bondLength = 3f;
+		bondLength = 2.3f;
 		rot = Quaternion.identity;
 		//set up bonding
 		relativePositions = new BondingPositionInfo[4];
