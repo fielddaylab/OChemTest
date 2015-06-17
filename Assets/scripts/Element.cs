@@ -19,6 +19,7 @@ public class Element : MonoBehaviour {
 	public GameObject bondPrefab;
 	public Quaternion rot;
 	public float connectionPriority;
+	private float zBeforeMoving;
 
 	public int visitState;
 	public enum VisitState{
@@ -184,7 +185,8 @@ public class Element : MonoBehaviour {
 		if(!PlayerControl.moveAtomsAsGroup){
 			DetachNeighbours();
 		}
-		
+		//get z
+		zBeforeMoving = Vector3.Distance(transform.position, Camera.main.transform.position);
 	}
 	void OnMouseDrag(){
 		PlayerControl.self.state = (int)PlayerControl.State.HoldingAtom;
@@ -606,8 +608,9 @@ public class Element : MonoBehaviour {
 	}
 	public virtual void MoveWithMouse(){
 		Vector3 mouseInWorld = Input.mousePosition;
-		mouseInWorld.z = 10f;
+		mouseInWorld.z = zBeforeMoving; 
 		Vector3 newAtomPosition = Camera.main.ScreenToWorldPoint(mouseInWorld);
+
 		Vector3 positionOffset = newAtomPosition-this.transform.position;
 		if(!PlayerControl.moveAtomsAsGroup){
 			transform.position = newAtomPosition;
