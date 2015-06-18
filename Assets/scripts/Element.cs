@@ -20,6 +20,7 @@ public class Element : MonoBehaviour {
 	public Quaternion rot;
 	public float connectionPriority;
 	private float zBeforeMoving;
+	public GameObject helperSphere;
 
 	public int visitState;
 	public enum VisitState{
@@ -56,19 +57,19 @@ public class Element : MonoBehaviour {
 
 	
 	//find an element in the neighbours list, and remove it
-	public void RemoveBondingNeighbour(Element e, bool destroyBond = true){
+	public void RemoveBondingNeighbour(Element e){
 		GameObject bondToDestroy = null;
 		int itemToRemoveIndex = -1;
 		for(int i=0; i < bondedNeighbours.Count;i++){
 			if(bondedNeighbours[i].neighbour == e){
-				if(destroyBond){
-					bondToDestroy = bondedNeighbours[i].bond;
-					//bondedNeighbours[i].bond = null;
-					if(bondToDestroy != null){
-						Destroy(bondToDestroy);
-					}
-					
+				//destroy bond
+				bondToDestroy = bondedNeighbours[i].bond;
+				//bondedNeighbours[i].bond = null;
+				if(bondToDestroy != null){
+					Destroy(bondToDestroy);
 				}
+					
+				
 				int bpiIndex = bondedNeighbours[i].bpiIndex;
 				if(bpiIndex < 0){
 					Debug.Log("BPI INDEX < 0");
@@ -83,6 +84,7 @@ public class Element : MonoBehaviour {
 			}
 		}
 		if(itemToRemoveIndex >= 0){
+			Debug.Log("removing " + e.gameObject.name + " from " + gameObject.name);
 			bondedNeighbours.RemoveAt(itemToRemoveIndex);
 		}
 
@@ -98,7 +100,8 @@ public class Element : MonoBehaviour {
 		//set up bonding
 		relativePositions = new BondingPositionInfo[4];
 		//for center to vertex distance = 1
-		
+		helperSphere = GameObject.Find("helperSphere");
+
 		Vector3 pos0 = new Vector3(0, 0, 1); 
 		Vector3 pos1 = new Vector3(0, 2*sqrt2/3f, -1/3f);
 		Vector3 pos2 = new Vector3(sqrt2/sqrt3, -sqrt2/3f,  -1/3f);
@@ -121,36 +124,7 @@ public class Element : MonoBehaviour {
 	void Update () {
 		
 	}
-	//returns true if e1 and e2 were conneted and now disconnected
-	//else return false
-	public static bool TryDisconnect(Element e1, Element e2){
-		bool removedE2FromE1 = false;
-		bool bothRemoved = false;
-		int bond = -1;
-		for(int i=0; i < e1.bondedNeighbours.Count; i++){
-			BondingNeighbour bn = e1.bondedNeighbours[i];
-			if(bn.neighbour == e2){
-				e1.bondedNeighbours.RemoveAt(i);
-				removedE2FromE1 = true;
-				break;
-			}
-		}
-		if(!removedE2FromE1)return false;
-		for(int i=0; i < e2.bondedNeighbours.Count;i++){
-			BondingNeighbour bn = e2.bondedNeighbours[i];
-			if(bn.neighbour == e1){
-				e2.bondedNeighbours.RemoveAt(i);
-				bond = bn.bondCharge;
-				bothRemoved = true;
-				break;
-			}
-		}
-		if(bothRemoved){
-			e1.remainingCharge += bond;
-			e2.remainingCharge += bond;
-		}
-		return bothRemoved;
-	}
+	
 	public void StopMyCoroutines(){
 		StopAllCoroutines();
 	}
@@ -174,9 +148,6 @@ public class Element : MonoBehaviour {
 	}
 	void OnCollisionExit(Collision other){
 		
-		Element e = other.gameObject.GetComponent<Element>();
-		if(this.GetInstanceID() > e.GetInstanceID())return;
-		TryDisconnect(this, other.gameObject.GetComponent<Element>());
 
 	}
 	void OnMouseDown(){
@@ -339,22 +310,25 @@ public class Element : MonoBehaviour {
 		for(int i=0; i < this.bondedNeighbours.Count; i++){
 			Element neighbourElement = bondedNeighbours[i].neighbour;
 			BondingNeighbour bn = bondedNeighbours[i];
+			/*
 			if(bn.bpiIndex >= 0){
 				
 				neighbourElement.relativePositions[bn.bpiIndex].taken = false;
 				bn.bpiIndex = -1;
 			}
-			
+			*/
 			//remove this from neighbour elements' neighbour list
 			//and destroy the bond object
-			neighbourElement.RemoveBondingNeighbour(this, true);
+			neighbourElement.RemoveBondingNeighbour(this);
 
 			neighbourElement.remainingCharge += 1;
 			this.remainingCharge += 1;
-
+			Debug.Log("this: " + this.gameObject.name + " remainingCharge: " +  this.remainingCharge
+				+ " and e: " + neighbourElement.gameObject.name + " remainingCharge +1");
 		}
 		//clear my neighbour list
 		bondedNeighbours.Clear();
+		this.transform.forward = Vector3.forward;
 	}
 	//ues BFS to calcualte total mass of the chain
 	public virtual int CalculateChainMass(){
@@ -458,7 +432,6 @@ public class Element : MonoBehaviour {
 					Vector3 newPosition = currElement.rot 
 						* (bondLength/sqrt3 * currElement.relativePositions[bpiIndex].position)
 						+ currElement.transform.position;
-					Vector3 newForward = currElement.transform.position - newPosition;
 
 					//find neighbour in currElement's neighbour list and change its bpiindex to 0
 					
@@ -475,11 +448,13 @@ public class Element : MonoBehaviour {
 						newPosition, neighbour.GetComponent<Collider>());
 					bpiIndex = newNeighbourBPI;
 					bondingNeighbour.bpiIndex = bpiIndex;
-					Debug.Log("new bpi: " + neighbour.gameObject.name + " at " + currElement.gameObject.name
-						+ ": " + bpiIndex + ", old bpi: " + oldBPI);
+
 					//TODO: check if new bpiIndex < 0
 					//this should NOT happen!
 					if(bpiIndex < 0){
+						Debug.Log("new bpi: " + neighbour.gameObject.name + " at " + currElement.gameObject.name
+						+ ": " + bpiIndex + ", old bpi: " + oldBPI 
+						+ ", remainingCharge: " + currElement.remainingCharge);
 						bpiIndex = bpiIndex +4;
 					}
 					neighbour.transform.position 
@@ -512,26 +487,56 @@ public class Element : MonoBehaviour {
 	public int IndexOfClosestAvailableBondingPosition(Vector3 pos, Collider coll){
 		float minDist = Mathf.Infinity;
 		int retIndex = -1;
+		string msg = "; ";
 		for(int i=0; i < relativePositions.Length;i++){
 			Vector3 bondingPos = relativePositions[i].position;
 			Vector3 potentialPosition = this.rot 
 					* (bondLength/sqrt3 * bondingPos) 
 					+ this.transform.position;
+			//Instantiate(helperSphere, potentialPosition, Quaternion.identity);
 
 			float dist = Vector3.Distance(pos, potentialPosition);
 			//Debug.Log("dist " + dist);
 			Collider[] hitColliders = Physics.OverlapSphere(potentialPosition, ((SphereCollider)coll).radius);
 			
 			if(this.GetType() == typeof(Carbon)){
-				if(hitColliders.Length == 1 && hitColliders[0].GetInstanceID() != coll.GetInstanceID()){
+				if(hitColliders.Length == 1 
+					&& hitColliders[0].gameObject.name != coll.gameObject.name){
 				//this position has been taken
-
+					
+					
+					
 				}
-				else if(hitColliders.Length == 1 && hitColliders[0].GetInstanceID() == coll.GetInstanceID()
+				else if(hitColliders.Length == 1 
+					&& hitColliders[0].gameObject.name == coll.gameObject.name
 					|| hitColliders.Length == 0){
+					if(hitColliders.Length == 1 && 
+					hitColliders[0].gameObject.name == coll.gameObject.name){
+						msg += "self";
+					}
 					if(dist < minDist){
 						minDist = dist;
 						retIndex = i;
+					}
+				}
+				else{
+					msg += " multi colls: ";
+					//check if other is one of them
+					bool collidersContainOther = false;
+					foreach(Collider c in hitColliders){
+						if(c.gameObject == coll.gameObject){
+							collidersContainOther = true;
+							break;
+						}
+					}
+					if(collidersContainOther){
+						foreach(BondingNeighbour bn in this.bondedNeighbours){
+							if(bn.neighbour.gameObject == coll.gameObject){
+								retIndex = bn.bpiIndex;
+								minDist = -1;
+							}
+							break;
+						}
 					}
 				}
 			}
@@ -544,6 +549,24 @@ public class Element : MonoBehaviour {
 				}
 			}
 			
+			
+		}
+		if(retIndex == -1){
+			foreach(BondingNeighbour bn in this.bondedNeighbours){
+				msg += bn.neighbour.gameObject.name + ", ";
+			}
+			Debug.Log(coll.gameObject.name + " pos taken at " + gameObject.name + msg);
+
+			//if this already has other as a neighbour,return its index
+			foreach(BondingNeighbour bn in this.bondedNeighbours){
+				if(bn.neighbour == coll.gameObject.GetComponent<Element>()){
+					retIndex = bn.bpiIndex;
+					
+					Debug.Log(coll.gameObject.name + " is already neighbour of " + gameObject.name 
+						+ ", return index: " + retIndex);
+					break;
+				}
+			}
 		}
 		return retIndex;
 	}
@@ -585,7 +608,10 @@ public class Element : MonoBehaviour {
 
 				this.remainingCharge -= 1;
 				e.remainingCharge -= 1;
-
+				/*
+				Debug.Log("this: " + gameObject.name + " remainingCharge: " + this.remainingCharge 
+					+ " and e: " + e.gameObject.name + " remainingCharge -1");
+					*/
 				return myBondingIndex;
 			}
 		}
