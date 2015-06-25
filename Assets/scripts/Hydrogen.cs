@@ -65,9 +65,9 @@ public class Hydrogen : Element {
 		//if e has already bonded with other atoms
 		if(myBondingIndex >= 0){
 			GameObject bond = attractor.CreateBondWith(this);
-			this.bondedNeighbours.Add(new BondingNeighbour(1, attractor, bond, 0));
-
-			attractor.bondedNeighbours.Add(new BondingNeighbour(1,this, bond, myBondingIndex));
+			this.bondedNeighbours.Add(new BondingNeighbour(1, ref attractor, bond, 0));
+			Element thisRef = this;
+			attractor.bondedNeighbours.Add(new BondingNeighbour(1,ref thisRef, bond, myBondingIndex));
 		}else{
 		}
 	}
