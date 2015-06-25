@@ -1,33 +1,90 @@
-﻿using UnityEngine;
+﻿/*
+	Class: Element
+
+	Desc: Main behaviour of atoms. Handles the logic of 
+	atom-atom bonding (when OnMouseUp())and debonding(when OnMouseDown()). 
+	Each atom has an array of bonding positions relative to the origin(0,0,0),
+	and the first bonding position of every atom is defined as one that aligns 
+	with the its forward direction.
+
+	Each atom has a Quaternion object: rot. It represents the orientation of the 
+	atom determined by its forward vector.
+
+	Each atom has a list of bonded neighbours. BFS is used to traverse chains to 
+	calculate total mass or transform the atoms in them. On bonding, for every atom in a chain, 
+	each of its neighbours' position is first rotated by [the parent atom's rot * the relative position 
+	it will bond at * bondLength], and then translated to the parent atoms position [+ parentatom's position]
+	For example, this.rot * (bondLength/sqrt3 * this.relativePositions[i].position) + this.transform.position
+
+*/
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
 public class Element : MonoBehaviour {
-
+	/* Atom's name: C, O or H. Does not affect game mechanic */
 	public string name;
+	/* 	
+		Max number of atoms this atom can attract, for carbon and oxygen,
+		be attracted to for hydrogen (which is 1)
+	*/
 	public int maxCharge;
+	/* 	Used to keep track of the number of remaining bonding positions */
 	public int remainingCharge;
-	public int atomicNumber;  //number of protons
-	public float shieldScale;
-
+	/*	Basically the "mass" of an atom, actually the number of protons */
+	public int atomicNumber;
+	/*	scale (ie, radius) of the transparent sphere shield */
+	public float shieldScale; 
+	/*	Shorthand for sqaure root 2 and 3, makes life easier */
 	public static float sqrt2 = Mathf.Sqrt(2);
 	public static float sqrt3 = Mathf.Sqrt(3);
 
+	/* Length of each bond, not scientifically accurate, will be scaled by 1/sqrt(3) */
 	public float bondLength;
+
+	/* 
+		Array of relative bonding positions, should be transformed when used 
+		atom's transform.forward vector should always be aligned with its translation
+		vector to the position of its neighbour that occupies the first bonding position.
+		If the atom does not have any neighbour, its forward vector is the same as the 
+		forward vector in world space.
+
+		bool taken is no longer used.
+	*/
 	public BondingPositionInfo[] relativePositions;
+
+	/*	Prefab of the bond. Used for instantiating bonds */
 	public GameObject bondPrefab;
+
+	/*	
+		Same as trasnform.rotation. "rot" is the rotation that makes the atom's forward vector
+		point at the neighbour at relativePosition[0]. If the atom does not have any neighbour,
+		it is the same as the forward vector in world space.
+	*/
 	public Quaternion rot;
+
+	/*
+		Used to keep the calculated result of connection priority of this atom to another. 
+		The larger the number, the higher the priority. 
+		Priority = mass of the chain the atom is in / distance between this atom and anothers
+	*/
 	public float connectionPriority;
+
+	/*	Used for adding atoms. May not be needed */
 	private float zBeforeMoving;
+	/*	Used for debuggin only */
 	public GameObject helperSphere;
 
+	/* Used for BFS. Keeps track of visiting state to avoid cycles */
 	public int visitState;
 	public enum VisitState{
 		unvisited,
 		visited,
 		visiting
 	};
+
+	/*	Used as relative positions */
 	public class BondingPositionInfo{
 		public Vector3 position;
 		public bool taken;
@@ -38,6 +95,16 @@ public class Element : MonoBehaviour {
 		}
 
 	}
+	/*	
+		Info of bonded neighbours of this atom. Bond charge is usually 1.
+		Has reference to the bonded neighbour and the bond. Note that nighbour
+		also has a bond between them, but they are not the same object, which means
+		when a bond is to be destroyed, really both should be destroyed.
+		bpiIndex is the index of the relative position the neighbour takes at this atom.
+		It can be used to index into the relativPosition[] of this atom.
+		bpiIndex is changed when the atom's foward vector changes.
+	*/
+
 	public class BondingNeighbour{
 		public int bondCharge;
 		public Element neighbour;
@@ -53,6 +120,8 @@ public class Element : MonoBehaviour {
 			
 		}
 	}
+
+	
 	public List<BondingNeighbour> bondedNeighbours;
 
 	

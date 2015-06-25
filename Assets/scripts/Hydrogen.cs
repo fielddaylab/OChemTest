@@ -1,4 +1,13 @@
-﻿using UnityEngine;
+﻿/*
+	Class: Hydrogen
+
+	Desc: Extends Element.cs. Bonding behaviour for hydrogen is different than
+	Carbon that instead of snapping a chain to the carbon held, an Hydrogen atom 
+	held is attracted to a Carbon atom in a chain on mouse up. Unlike carbon, a 
+	hydrogen atom does not bond with hydrogen atoms, and they can be only attracted 
+	to carbon or oxygen atoms.
+*/
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 

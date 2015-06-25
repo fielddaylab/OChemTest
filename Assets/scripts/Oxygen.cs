@@ -1,4 +1,12 @@
-﻿using UnityEngine;
+﻿/*
+	Class: Oxygen
+	Desc: Extends Element.cs. TO BE IMPLEMENTED.
+	An oxygen atom should attract hydrogen atoms, 
+	be attracted to carbon atoms, not attract other
+	oxygen atoms, and may repel other oxygen atoms.
+*/
+
+using UnityEngine;
 using System.Collections;
 
 public class Oxygen : Element{

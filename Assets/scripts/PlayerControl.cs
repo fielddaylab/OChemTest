@@ -1,4 +1,12 @@
-﻿using UnityEngine;
+﻿/*
+	Class: PlayerControl
+
+	Desc: Class for user control, eg.camera, and main game states to decide
+	what events to fire, eg. rotating camera or selecting atoms when the mouse 
+	is clicked, see Update().
+*/
+
+using UnityEngine;
 using System.Collections;
 
 public class PlayerControl : MonoBehaviour {

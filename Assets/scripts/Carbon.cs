@@ -1,4 +1,11 @@
-﻿using UnityEngine;
+﻿/*
+	Class: Carbon
+
+	Desc: Extends Element.cs. A carbon atom, unlike hydrogen, can attract, 
+	instead of being attracted to, other carbon, hydrogen, or oxygen atoms, up to 4, 
+*/
+
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
